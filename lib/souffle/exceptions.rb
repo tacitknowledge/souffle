@@ -30,4 +30,7 @@ class Souffle::Exceptions
 
   # The AWS Keys are invalid.
   class InvalidAwsKeys < RuntimeError; end
+  
+  # The Rackspace Keys are invalid.
+  class InvalidRackspaceKeys < RuntimeError; end
 end

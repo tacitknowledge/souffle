@@ -12,7 +12,7 @@ module Souffle::Provider
     # @param [ Souffle::System ] system The system to provision.
     def initialize(system=Souffle::System.new)
       @system ||= system
-      create_ssh_dir_if_missing
+      #create_ssh_dir_if_missing
     end
 
     # The name of the given provider.
@@ -127,6 +127,7 @@ module Souffle::Provider
     def ssh_block(address, user="root", pass=nil, opts={})
       opts[:password] = pass unless pass.nil?
       opts[:paranoid] = false
+      Souffle::Log.info "SSH_BLOCK USER #{user} PASS #{pass} IP #{address} OPTS #{opts}"
       EM::Ssh.start(address, user, opts) do |connection|
         connection.errback do |err|
           Souffle::Log.error "SSH Error: #{err} (#{err.class})"

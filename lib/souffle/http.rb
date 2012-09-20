@@ -35,7 +35,7 @@ class Souffle::Http < Sinatra::Base
     Souffle::Log.debug msg
     Souffle::Log.debug data.to_s
 
-    provider = Souffle::Provider::AWS.new
+    provider = Souffle::Provider::Rackspace.new
 
     system = Souffle::System.from_hash(data)
     provider.create_system(system)
