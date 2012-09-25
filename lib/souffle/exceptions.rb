@@ -33,4 +33,7 @@ class Souffle::Exceptions
   
   # The Rackspace Keys are invalid.
   class InvalidRackspaceKeys < RuntimeError; end
+
+  # Plugin does not exist.
+  class PluginDoesNotExist < RuntimeError; end
 end

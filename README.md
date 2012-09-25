@@ -44,15 +44,15 @@ Running the service as a daemon automatically starts the webserver.
 
 ## Defining a system
 
-As an example system we'll generate two nodes that both are provisioned with `chef-solo`, have 2 10GB `raid0` EBS drives attached and configured with `LVM`.
+As an example system we'll generate two nodes that both are provisioned with `solo`, have 2 10GB `raid0` EBS drives attached and configured with `LVM`.
 
 ```json
 {
-  "provider": "aws",
   "user": "josh",
-  "domain": "mydomain.com",
   "options": {
-    "type": "chef-solo",
+    "provider": "aws",
+    "domain": "mydomain.com",
+    "type": "solo",
     "aws_ebs_size": 10,
     "volume_count": 2
   },
@@ -86,15 +86,117 @@ Attributes work in a specific-wins merge for the json configuration. If you defi
 
 This should be a familiar concept to those of who are using [Chef](https://github.com/opscode/chef). Similar to `environments`, `roles`, and `nodes`.
 
+#### Example
+
+```json
+{
+  "options": {
+    "aws_ebs_size": 10,
+    "volume_count": 2
+  },
+  "nodes": [
+    {
+      "name": "is_overriden",
+      "options": {
+        "aws_ebs_size":20,
+        "volume_count": 4
+      }
+    },
+    {
+      "name": "not_overridden"
+    },
+    {
+      "name": "count_overridden",
+      "options": {
+        "volume_count": 6
+      }
+    },
+    {
+      "name": "ebs_overridden",
+      "options": {
+        "aws_ebs_size": 50
+      }
+    }
+  ]
+}
+```
+
+With the above system, we'll have four nodes and the default system-wide options:
+
+<table>
+  <tr>
+    <th>Name</th><th>aws_ebs_size</th><th>volume_count</th>
+  </tr>
+  <tr>
+    <td>system (default)</td>
+    <td>10</td>
+    <td>2</td>
+  </tr>
+  <tr>
+    <td>is_overridden</td>
+    <td>20</td>
+    <td>4</td>
+  </tr>
+  <tr>
+    <td>not_overridden</td>
+    <td>10</td>
+    <td>2</td>
+  </tr>
+  <tr>
+    <td>count_overridden</td>
+    <td>10</td>
+    <td>6</td>
+  </tr>
+  <tr>
+    <td>ebs_overridden</td>
+    <td>50</td>
+    <td>2</td>
+  </tr>
+</table>
+
+#### Options
+
+    **Special Cases**
+    The `:attributes` key is representative of node-specific Chef attributes.
+
+
+The options hash is used to represent provisioner-level options (AWS, Vagrant) with the exception of the attributes key.
+
 ## REST Interface
 
-You can start up the rest interface by starting `souffle` with the `-d` parameter. The webserver supports the following actions: `create`, `version`, `status`. The default path `/` returns the `version`.
+You can start up the rest interface by starting `souffle` with the `-d` parameter. We do not currently have a web ui, however the webserver supports the following actions: `create`, `version`, `status`. The default path `/` returns the `version`.
+
+<table>
+  <tr>
+    <th>Command</th><th>Url</th><th>Example</th>
+  </tr>
+  <tr>
+    <td>version</td>
+    <td>/, /version</td>
+    <td>curl -sL http://localhost:8080/</td>
+  </tr>
+  <tr>
+    <td>create</td>
+    <td>/create</td>
+    <td>curl -sL http://localhost:8080/create</td>
+  </tr>
+  <tr>
+    <td>status (all)</td>
+    <td>/status</td>
+    <td>curl -sL http://localhost:8080/status</td>
+  </tr>
+  <tr>
+    <td>status (specific)</td>
+    <td>/status/<code>system</code></td>
+    <td>curl -sL http://localhost:8080/status/<code>6cbb78b2925a</code></td>
+  </tr>
+</table>
 
 ### Creating a new system
 
 There are two ways to create a new system, you can either create it with the `souffle` cli, or you can use the rest interface.
 
-Both the cli and the rest interface use the standard `json` format for [defining systems](https://github.com/seryl/souffle#defining-a-system).
+Both the cli and the rest interface use the standard `json` format for [defining systems](#defining-a-system).
 
     # Running from the CLI
     souffle -j /path/to/system.json

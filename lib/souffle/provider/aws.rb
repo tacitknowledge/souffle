@@ -56,18 +56,25 @@ class Souffle::Provider::AWS < Souffle::Provider::Base
   # @param [ String ] tag_prefix The tag prefix to use.
   # 
   # @return [ String ] The unique tag with prefix.
-  def generate_tag(tag_prefix="souffle")
-    "#{tag_prefix}-#{SecureRandom.hex(6)}"
+  def generate_tag(tag_prefix="sys")
+    if tag_prefix
+      "#{tag_prefix}-#{SecureRandom.hex(4)}"
+    else
+      SecureRandom.hex(4)
+    end
   end
 
   # Creates a system using aws as the provider.
   # 
   # @param [ Souffle::System ] system The system to instantiate.
   # @param [ String ] tag_prefix The tag prefix to use for the system.
-  def create_system(system, tag_prefix="souffle")
+  # 
+  # @return [ String ] The tag for the created system.
+  def create_system(system, tag_prefix=nil)
     system.options[:tag] = generate_tag(tag_prefix)
     system.provisioner = Souffle::Provisioner::System.new(system, self)
     system.provisioner.initialized
+    system.options[:tag]
   end
 
   # Takes a list of nodes and returns the list of their aws instance_ids.
@@ -203,7 +210,7 @@ class Souffle::Provider::AWS < Souffle::Provider::Base
 
       pre_event do
         @partitions = 0
-        @provider = node.provisioner.provider
+        @provider = node.provider
         node.options[:volumes].each_with_index do |volume, index|
           @provider.partition_device(
             node, @provider.volume_id_to_device(index)) do |count|
@@ -277,10 +284,10 @@ class Souffle::Provider::AWS < Souffle::Provider::Base
   # 
   # @param [ Souffle::Node ] node The node to install mdadm on.
   def setup_mdadm(node)
-    ssh_block(node) do |ssh|
+    n = node; ssh_block(node) do |ssh|
       ssh.exec!("/usr/bin/yum install -y mdadm")
+      n.provisioner.mdadm_installed
     end
-    node.provisioner.mdadm_installed
   end
 
   # Sets up software raid for the given node.
@@ -323,7 +330,7 @@ class Souffle::Provider::AWS < Souffle::Provider::Base
 
       pre_event do
         Souffle::Log.info "#{node.log_prefix} Waiting for node running..."
-        @provider = node.provisioner.provider
+        @provider = node.provider
         @blk = blk
       end
 
@@ -357,7 +364,7 @@ class Souffle::Provider::AWS < Souffle::Provider::Base
 
       pre_event do
         Souffle::Log.info "#{node.log_prefix} Waiting for EBS to be ready..."
-        @provider = node.provisioner.provider
+        @provider = node.provider
         @volume_ids = node.options[:volumes].map { |v| v[:aws_id] }
       end
 
@@ -471,12 +478,12 @@ class Souffle::Provider::AWS < Souffle::Provider::Base
   # 
   # @todo Setup the chef/chef-solo tar gzip and ssh connections.
   def provision(node)
-    if node.try_opt(:chef_provisioner) == :solo
+    set_hostname(node)
+    if node.try_opt(:chef_provisioner).to_s.downcase == "solo"
       provision_chef_solo(node, generate_chef_json(node))
     else
       provision_chef_client(node)
     end
-    node.provisioner.provisioned
   end
 
   # Waits for ssh to be accessible for a node for the initial connection and
@@ -507,7 +514,7 @@ class Souffle::Provider::AWS < Souffle::Provider::Base
 
       pre_event do
         Souffle::Log.info "#{node.log_prefix} Waiting for ssh..."
-        @provider = node.provisioner.provider
+        @provider = node.provider
         @blk = blk
       end
 
@@ -542,22 +549,37 @@ class Souffle::Provider::AWS < Souffle::Provider::Base
     end
   end
 
+  # Sets the hostname for the given node for the chef run.
+  # 
+  # @param [ Souffle:Node ] node The node to update the hostname for.
+  def set_hostname(node)
+    local_lookup = "127.0.0.1       #{node.fqdn} #{node.name}\n"
+    fqdn = node.fqdn
+    ssh_block(node) do |ssh|
+      ssh.exec!("hostname '#{fqdn}'")
+      ssh.exec!("echo \"#{local_lookup}\" >> /etc/hosts")
+      ssh.exec!("echo \"HOSTNAME=#{fqdn}\" >> /etc/sysconfig/network")
+    end
+  end
+
   # Provisions a box using the chef_solo provisioner.
   # 
   # @param [ String ] node The node to provision.
   # @param [ String ] solo_json The chef solo json string to use.
   def provision_chef_solo(node, solo_json)
     rsync_file(node, @newest_cookbooks, "/tmp")
-    solo_config =  "node_name \"#{node.name}.souffle\"\n"
-    solo_config << 'cookbook_path "/tmp/cookbooks"'
-    ssh_block(node) do |ssh|
+    solo_config =  "node_name \"#{node.fqdn}\"\n"
+    solo_config << "cookbook_path \"/tmp/cookbooks\"\n"
+    solo_config << 'role_path "/tmp/roles"'
+    n = node; ssh_block(node) do |ssh|
       ssh.exec!("sleep 2; tar -zxf /tmp/cookbooks-latest.tar.gz -C /tmp")
       ssh.exec!("echo '#{solo_config}' >/tmp/solo.rb")
       ssh.exec!("echo '#{solo_json}' >/tmp/solo.json")
       ssh.exec!("chef-solo -c /tmp/solo.rb -j /tmp/solo.json")
-      rm_files =  "/tmp/cookbooks /tmp/cookbooks-latest.tar.gz"
-      rm_files << " /tmp/solo.rb /tmp/solo.json > /tmp/chef_bootstrap"
+      rm_files = %w{ /tmp/cookbooks /tmp/cookbooks-latest.tar.gz
+        /tmp/roles /tmp/solo.rb /tmp/solo.json /tmp/chef_bootstrap }
       ssh.exec!("rm -rf #{rm_files}")
+      n.provisioner.provisioned
     end
   end
 
@@ -565,16 +587,22 @@ class Souffle::Provider::AWS < Souffle::Provider::Base
   # 
   # @todo Chef client provisioner needs to be completed.
   def provision_chef_client(node)
-    ssh_block(node) do |ssh|
-      ssh.exec!("chef-client")
+    client_cmds =  "chef-client -N #{node.fqdn} "
+    client_cmds << "-j /tmp/client.json "
+    client_cmds << "-S #{node.try_opt(:chef_server)} "
+    n = node; ssh_block(node) do |ssh|
+      write_temp_chef_json(ssh, n)
+      ssh.exec!(client_cmds)
+      cleanup_temp_chef_files(ssh, n)
+      node.provisioner.provisioned
     end
   end
 
   # Rsync's a file to a remote node.
   # 
   # @param [ Souffle::Node ] node The node to connect to.
-  # @param [ Souffle::Node ] file The file to rsync.
-  # @param [ Souffle::Node ] path The remote path to rsync.
+  # @param [ String ] file The file to rsync.
+  # @param [ String ] path The remote path to rsync.
   def rsync_file(node, file, path='.')
     n = @ec2.describe_instances(node.options[:aws_instance_id]).first
     super(n[:private_ip_address], file, path)
@@ -701,6 +729,25 @@ class Souffle::Provider::AWS < Souffle::Provider::Base
     rescue
       nil
     end
+  end
+
+  private
+
+  # Writes a temporary chef-client json file.
+  #
+  # @param [ EventMachine::Ssh::Connection ] ssh The em-ssh connection.
+  # @param [ Souffle::Node ] node The given node to work with.
+  def write_temp_chef_json(ssh, node)
+    ssh.exec!("echo '''#{generate_chef_json(node)}''' > /tmp/client.json")
+  end
+
+  # Removes the temporary chef-client files.
+  #
+  # @param [ EventMachine::Ssh::Connection ] ssh The em-ssh connection.
+  # @param [ Souffle::Node ] node The given node to work with.
+  def cleanup_temp_chef_files(ssh, node)
+    ssh.exec!("rm -f /tmp/client.json")
+    ssh.exec!("rm -f /etc/chef/validation.pem")
   end
 
 end

@@ -7,7 +7,7 @@ class Souffle::Http < Sinatra::Base
   before { content_type :json }
 
   # Returns the current version of souffle.
-  ['/', 'version'].each do |path|
+  ['/', '/version'].each do |path|
     get path do
       { :name => 'souffle',
         :version => Souffle::VERSION }.to_json
@@ -35,11 +35,15 @@ class Souffle::Http < Sinatra::Base
     Souffle::Log.debug msg
     Souffle::Log.debug data.to_s
 
-    provider = Souffle::Provider::Rackspace.new
-
     system = Souffle::System.from_hash(data)
-    provider.create_system(system)
+    provider = Souffle::Provider.plugin(system.try_opt(:provider)).new
+    system_tag = provider.create_system(system)
 
-    { :success => true }.to_json
+    begin
+      { :success => true, :system => system_tag }.to_json
+    rescue Exception => e
+      Souffle::Log.error "#{e.message}:\n#{e.backtrace.join("\n")}"
+      { :success => false }.to_json
+    end
   end
 end
