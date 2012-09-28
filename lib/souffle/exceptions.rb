@@ -36,4 +36,10 @@ class Souffle::Exceptions
 
   # Plugin does not exist.
   class PluginDoesNotExist < RuntimeError; end
+  
+  # The Rackspace Instance searched for does not exist.
+  class RackspaceInstanceDoesNotExist < RuntimeError; end
+  
+  # The Rackspace API had an error.
+  class RackspaceApiError < RuntimeError; end
 end

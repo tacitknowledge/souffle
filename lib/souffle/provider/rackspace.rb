@@ -25,16 +25,31 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
       :rackspace_endpoint => @system.try_opt(:rackspace_endpoint))
     rescue => e
       raise Souffle::Exceptions::InvalidRackspaceKeys,
-            "#{e}"#"Rackspace keys are required to operate on RackConnect Key: #{@system.try_opt(:rackspace_access_key)} username: #{@system.try_opt(:rackspace_access_name)} endpoint: #{@system.try_opt(:rackspace_endpoint)}"
+            "Rackspace keys are required to operate. Key: #{@system.try_opt(:rackspace_access_key)} username: #{@system.try_opt(:rackspace_access_name)} endpoint: #{@system.try_opt(:rackspace_endpoint)}"
   end
 
+  # Generates a prefixed unique tag.
+  # 
+  # @param [ String ] tag_prefix The tag prefix to use.
+  # 
+  # @return [ String ] The unique tag with prefix.
+  def generate_tag(tag_prefix="sys")
+    if tag_prefix
+      "#{tag_prefix}-#{SecureRandom.hex(4)}"
+    else
+      SecureRandom.hex(4)
+    end
+  end
+    
   # Creates a system using rackspace as the provider.
   # 
   # @param [ Souffle::System ] system The system to instantiate.
   # @param [ String ] tag_prefix The tag prefix to use for the system.
   def create_system(system, tag_prefix="souffle")
+    system.options[:tag] = generate_tag(tag_prefix)
     system.provisioner = Souffle::Provisioner::System.new(system, self)
     system.provisioner.initialized
+    system.options[:tag]
   end
 
   # Takes a list of nodes and returns the list of their rackspace instance_ids.
@@ -56,6 +71,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
       :name => node.name)
     node.options[:rackspace_instance_id] = instance_info.id
     node.options[:node_password] = instance_info.password
+    node.options[:node_name] = [node.name, node.domain].compact.join('.')
     wait_until_node_running(node) { node.provisioner.created }
   end
 
@@ -64,7 +80,8 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
   # @param [ Souffle::Node ] nodes The list of nodes to terminate.
   def kill(nodes)
     instance_id_list(nodes).each do |n|
-      @rackspace.servers.delete(n)
+      Souffle::Log.info "Killing #{n}"
+      @rackspace.delete_server(n)
     end
   end
 
@@ -103,9 +120,10 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
   # @param [ Souffle::Node ] node The node to install mdadm on.
   def setup_mdadm(node)
     ssh_block(node) do |ssh|
+      Souffle::Log.info "setup_mdadm: SSH: #{ssh}"
       ssh.exec!("/usr/bin/yum install -y mdadm")
+      node.provisioner.mdadm_installed
     end
-    node.provisioner.mdadm_installed
   end
 
   # Sets up software raid for the given node.
@@ -120,7 +138,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
   # @param [ Souffle::Node ] node The node to wait until running on.
   # @param [ Fixnum ] poll_timeout The maximum number of seconds to wait.
   # @param [ Fixnum ] poll_interval The interval in seconds to poll EC2.
-  def wait_until_node_running(node, poll_timeout=200, poll_interval=2, &blk)
+  def wait_until_node_running(node, poll_timeout=400, poll_interval=4, &blk)
     rackspace = @rackspace; Souffle::PollingEvent.new(node) do
       timeout poll_timeout
       interval poll_interval
@@ -132,7 +150,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
       end
 
       event_loop do
-        instance = rackspace.servers.get(node.options[:rackspace_instance_id])
+        instance = @provider.get_server(node)
         if instance.state.downcase == "active"
           event_complete
           @blk.call unless @blk.nil?
@@ -151,13 +169,12 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
   # 
   # @todo Setup the chef/chef-solo tar gzip and ssh connections.
   def provision(node)
-    Souffle::Log.info "#{node.try_opt(:chef_provisioner)}"
-    if node.try_opt(:chef_provisioner) == :solo
+    set_hostname(node)
+    if node.try_opt(:chef_provisioner).to_s.downcase == "solo"
       provision_chef_solo(node, generate_chef_json(node))
     else
       provision_chef_client(node)
     end
-    node.provisioner.provisioned
   end
 
   # Waits for ssh to be accessible for a node for the initial connection and
@@ -182,7 +199,9 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
                     poll_timeout=100, iteration=0, &blk)
     return node.provisioner.error_occurred if iteration == 3
 
-    rackspace=@rackspace; Souffle::PollingEvent.new(node) do
+    rackspace=@rackspace
+    n = get_server(node)
+    Souffle::PollingEvent.new(node) do
       timeout poll_timeout
       interval EM::Ssh::Connection::TIMEOUT
 
@@ -193,21 +212,21 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
       end
 
       event_loop do
-        n = rackspace.servers.get(node.options[:rackspace_instance_id])
         unless n.nil?
           if pass.nil?
             pass = node.options[:node_password]
           end
           opts[:password] = pass unless pass.nil?
           opts[:paranoid] = false
-          address = n.ipv4_address#addresses["private"].first["addr"]
+          address = n.addresses["private"].first["addr"]
           Souffle::Log.info "USER #{user} PASS #{pass} IP #{address} OPTS #{opts}"
           EM::Ssh.start(address, user, opts) do |connection|
             connection.errback  { |err| nil }
             connection.callback do |ssh|
+              ssh.exec!("touch /root/.noupdate")
               event_complete
               if node.try_opt(:rack_connect)
-                wait_for_rackconnect(node){ node.provisioner.booted }
+                @provider.wait_for_rackconnect(node)
               else
                 node.provisioner.booted
               end
@@ -226,15 +245,58 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
     end
   end
 
-  def wait_for_rackconnect(node)
+  def wait_for_rackconnect(node, iteration=0)
+    max_iterations = 5
+    return node.provisioner.error_occurred if iteration == max_iterations
+
+    rackconnect_test = "curl -s -S https://ord.api.rackconnect.rackspace.com/v1/automation_status?format=JSON"
+    n = get_server(node)
     
+    Souffle::PollingEvent.new(node) do
+      timeout 400
+      interval EM::Ssh::Connection::TIMEOUT
+
+      pre_event do
+        Souffle::Log.info "#{node.log_prefix} Waiting for rackconnect... (#{iteration}/#{max_iterations})"
+        @provider = node.provisioner.provider
+      end
+
+      event_loop do
+        unless n.nil?
+          opts = {}
+          opts[:password] = node.options[:node_password]
+          opts[:paranoid] = false
+          address = n.addresses["private"].first["addr"]
+          
+          EM::Ssh.start(address, "root", opts) do |connection|
+            connection.errback  { |err| nil }
+            connection.callback do |ssh|
+              output = ssh.exec!(rackconnect_test)
+              ssh.close
+              if (output.to_s =~ /deployed/i)
+                event_complete
+                node.provisioner.booted
+              elsif (output.to_s =~ /failed/i)
+                event_complete
+                node.provisioner.error_occurred
+              end
+            end
+          end
+        end
+      end
+
+      error_handler do
+        Souffle::Log.error "#{node.log_prefix} Rackconnect timeout..."
+        @provider.wait_for_rackconnect(node, iteration+1)
+      end
+    end
   end
   # Provisions a box using the chef_solo provisioner.
   # 
   # @param [ String ] node The node to provision.
   # @param [ String ] solo_json The chef solo json string to use.
   def provision_chef_solo(node, solo_json)
-    #rsync_file(node, @newest_cookbooks, "/tmp")
+    rsync_file(node, @newest_cookbooks, "/tmp")
     solo_config =  "node_name \"#{node.name}.souffle\"\n"
     solo_config << 'cookbook_path "/tmp/cookbooks"'
     ssh_block(node) do |ssh|
@@ -245,19 +307,50 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
       rm_files =  "/tmp/cookbooks /tmp/cookbooks-latest.tar.gz"
       rm_files << " /tmp/solo.rb /tmp/solo.json > /tmp/chef_bootstrap"
       ssh.exec!("rm -rf #{rm_files}")
+      node.provisioner.provisioned
     end
   end
 
   # Provisions a box using the chef_client provisioner.
   # 
   # @todo Chef client provisioner needs to be completed.
+  # Provisions a box using the chef_client provisioner.
+  # 
+  # @todo Chef client provisioner needs to be completed.
   def provision_chef_client(node)
-    Souffle::Log.info "Provisioning Chef Client"
-    ssh_block(node) do |ssh|
-      ssh.exec!("chef-client")
+    validation_pem = node.try_opt(:validation_pem)
+    client_config = "log_level\t:info
+    log_location\tSTDOUT
+    chef_server_url\t'#{node.try_opt(:chef_server)}'
+    validation_client_name\t'chef-validator'"
+    client_cmds =  "chef-client -N #{node.options[:node_name]} "
+    client_cmds << "-j /tmp/client.json "
+    client_cmds << "-S #{node.try_opt(:chef_server)} "
+    client_cmds << "-E #{node.try_opt(:chef_environment)} " unless node.try_opt(:chef_environment).nil?
+    n = node; ssh_block(node) do |ssh|
+      write_temp_chef_json(ssh, n)
+      ssh.exec!("mkdir /etc/chef")
+      ssh.exec!("echo \"#{client_config}\" >> /etc/chef/client.rb")
+      ssh.exec!("echo \"#{validation_pem}\" >> /etc/chef/validation.pem")
+      ssh.exec!(client_cmds)
+      #cleanup_temp_chef_files(ssh, n)
+      node.provisioner.provisioned
     end
   end
 
+  # Sets the hostname for the given node for the chef run.
+  # 
+  # @param [ Souffle:Node ] node The node to update the hostname for.
+  def set_hostname(node)
+    local_lookup = "127.0.0.1       #{node.options[:node_name]} #{node.name}\n"
+    fqdn = node.options[:node_name]
+    ssh_block(node) do |ssh|
+      ssh.exec!("hostname '#{fqdn}'")
+      ssh.exec!("echo \"#{local_lookup}\" >> /etc/hosts")
+      ssh.exec!("echo \"HOSTNAME=#{fqdn}\" >> /etc/sysconfig/network")
+    end
+  end
+      
   # Rsync's a file to a remote node.
   # 
   # @param [ Souffle::Node ] node The node to connect to.
@@ -265,10 +358,26 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
   # @param [ Souffle::Node ] path The remote path to rsync.
   def rsync_file(node, file, path='.')
     n = @rackspace.servers.get(node.options[:rackspace_instance_id])
-    #n.addresses["private"].first["addr"]
-    super(n.ipv4_address, file, path)
+    super(n.addresses["private"].first["addr"], file, path)
+  end
+  
+  # Writes a temporary chef-client json file.
+  #
+  # @param [ EventMachine::Ssh::Connection ] ssh The em-ssh connection.
+  # @param [ Souffle::Node ] node The given node to work with.
+  def write_temp_chef_json(ssh, node)
+    ssh.exec!("echo '''#{generate_chef_json(node)}''' > /tmp/client.json")
   end
 
+  # Removes the temporary chef-client files.
+  #
+  # @param [ EventMachine::Ssh::Connection ] ssh The em-ssh connection.
+  # @param [ Souffle::Node ] node The given node to work with.
+  def cleanup_temp_chef_files(ssh, node)
+    ssh.exec!("rm -f /tmp/client.json")
+    ssh.exec!("rm -f /etc/chef/validation.pem")
+  end
+    
   # Yields an ssh object to manage the commands naturally from there.
   # 
   # @param [ Souffle::Node ] node The node to run commands against.
@@ -284,7 +393,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
   # 
   # @yield [ EventMachine::Ssh::Session ] The ssh session.
   def ssh_block(node, user="root", pass=nil, opts={})
-   n = @rackspace.servers.get(node.options[:rackspace_instance_id])
+   n = get_server(node)
     if n.nil?
       raise AwsInstanceDoesNotExist,
         "The Rackspace instance (#{node.options[:rackspace_instance_id]}) does not exist."
@@ -293,11 +402,23 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
         pass = node.options[:node_password]
       end
       opts[:password] = pass unless pass.nil?
-      Souffle::Log.info "USER #{user} PASS #{pass} IP #{n.ipv4_address} OPTS #{opts}"
-      super(n.ipv4_address, user, pass, opts)
+      Souffle::Log.info "USER #{user} PASS #{pass} IP #{n.addresses["private"].first["addr"]} OPTS #{opts}"
+      super(n.addresses["private"].first["addr"], user, pass, opts)
     end
   end
-
+  
+    
+  # Yields a rackspace server object to manage the commands naturally from there.
+  # 
+  # @param [ Souffle::Node ] node The node to run commands against.
+  def get_server(node)
+    rackspace = @rackspace.servers.get(node.options[:rackspace_instance_id])
+    rescue => e
+      raise Souffle::Exceptions::RackspaceApiError,
+        "#{e.class} :: #{e}"
+    return rackspace unless rackspace.nil?
+  end
+  
   class << self
     # Updates the souffle status with the latest AWS information.
     # 
