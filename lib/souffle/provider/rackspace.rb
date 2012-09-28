@@ -1,5 +1,4 @@
 require 'fog'
-
 require 'souffle/polling_event'
 
 # The RackspaceV2 souffle provider.
@@ -84,15 +83,33 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
       @rackspace.delete_server(n)
     end
   end
-
+  
   # Takes a list of nodes kills them and then recreates them.
   # 
   # @param [ Souffle::Node ] nodes The list of nodes to kill and recreate.
   def kill_and_recreate(nodes)
     kill(nodes)
-    @provisioner.reclaimed
+    nodes.each do |n|
+      n.provisioner.reclaimed
+    end
   end
-
+  
+  # Takes a node and kills it.
+  # 
+  # @param [ Souffle::Node ] A node to terminate
+  def kill_node(node)
+      Souffle::Log.info "Killing #{node.name}"
+      @rackspace.delete_server(node.options[:rackspace_instance_id])
+  end
+  
+  # Takes a list of nodes kills them and then recreates them.
+  # 
+  # @param [ Souffle::Node ] nodes The list of nodes to kill and recreate.
+  def kill_and_recreate_node(node)
+    kill_node(node)
+    node.provisioner.reclaimed
+  end
+  
   # Wait for the machine to boot up.
   # 
   # @param [ Souffle::Node ] node The node to boot up.
@@ -138,7 +155,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
   # @param [ Souffle::Node ] node The node to wait until running on.
   # @param [ Fixnum ] poll_timeout The maximum number of seconds to wait.
   # @param [ Fixnum ] poll_interval The interval in seconds to poll EC2.
-  def wait_until_node_running(node, poll_timeout=400, poll_interval=4, &blk)
+  def wait_until_node_running(node, poll_timeout=600, poll_interval=4, &blk)
     rackspace = @rackspace; Souffle::PollingEvent.new(node) do
       timeout poll_timeout
       interval poll_interval
@@ -154,6 +171,11 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
         if instance.state.downcase == "active"
           event_complete
           @blk.call unless @blk.nil?
+        elsif instance.state.downcase == "error"
+          event_complete
+          error_msg = "#{node.log_prefix} Error on Node Boot..."
+          Souffle::Log.error error_msg
+          node.provisioner.error_occurred
         end
       end
 
@@ -164,12 +186,13 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
       end
     end
   end
-
+  
   # Provisions a node with the chef/chef-solo configuration.
   # 
   # @todo Setup the chef/chef-solo tar gzip and ssh connections.
   def provision(node)
     set_hostname(node)
+    set_zerigo_dns(node) if node.try_opt(:use_zerigo)
     if node.try_opt(:chef_provisioner).to_s.downcase == "solo"
       provision_chef_solo(node, generate_chef_json(node))
     else
@@ -338,6 +361,31 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
     end
   end
 
+  # Sets zerigo dns for the given node.
+  # 
+  # @param [ Souffle:Node ] node The node to update dns for.
+  def set_zerigo_dns(node)
+    n = get_server(node)
+    begin
+      dns = Fog::DNS.new({
+        :provider     => 'Zerigo',
+        :zerigo_email => node.try_opt(:zerigo_email),
+        :zerigo_token => node.try_opt(:zerigo_api_key)
+      })
+    rescue => e
+      Souffle::Log.error "#{e.class} :: #{e}"
+    end
+    zone = dns.zones.select { |z| z.domain = "#{node.domain}" }
+    zone_id = zone[0].id
+    begin
+      host = dns.find_hosts("node.options[:node_name]")
+    rescue Fog::DNS::Zerigo::NotFound
+      host = nil
+    end
+    dns.delete_host host.body["hosts"][0]["id"] if host
+    dns.create_host(zone_id,"A",n.ipv4_address,:hostname => "#{node.name}")
+  end
+   
   # Sets the hostname for the given node for the chef run.
   # 
   # @param [ Souffle:Node ] node The node to update the hostname for.
