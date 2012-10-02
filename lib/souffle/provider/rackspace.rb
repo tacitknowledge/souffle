@@ -378,7 +378,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
     zone = dns.zones.select { |z| z.domain = "#{node.domain}" }
     zone_id = zone[0].id
     begin
-      host = dns.find_hosts("node.options[:node_name]")
+      host = dns.find_hosts(node.options[:node_name])
     rescue Fog::DNS::Zerigo::NotFound
       host = nil
     end
