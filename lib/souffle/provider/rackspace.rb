@@ -192,7 +192,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
   # @todo Setup the chef/chef-solo tar gzip and ssh connections.
   def provision(node)
     set_hostname(node)
-    set_zerigo_dns(node) if node.try_opt(:use_zerigo)
+    setup_dns(node) unless node.try_opt(:dns_provider).nil?
     if node.try_opt(:chef_provisioner).to_s.downcase == "solo"
       provision_chef_solo(node, generate_chef_json(node))
     else
@@ -361,29 +361,14 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
     end
   end
 
-  # Sets zerigo dns for the given node.
+  # Sets dns for the given node.
   # 
   # @param [ Souffle:Node ] node The node to update dns for.
-  def set_zerigo_dns(node)
+  def setup_dns(node)
     n = get_server(node)
-    begin
-      dns = Fog::DNS.new({
-        :provider     => 'Zerigo',
-        :zerigo_email => node.try_opt(:zerigo_email),
-        :zerigo_token => node.try_opt(:zerigo_api_key)
-      })
-    rescue => e
-      Souffle::Log.error "#{e.class} :: #{e}"
-    end
-    zone = dns.zones.select { |z| z.domain = "#{node.domain}" }
-    zone_id = zone[0].id
-    begin
-      host = dns.find_hosts(node.options[:node_name])
-    rescue Fog::DNS::Zerigo::NotFound
-      host = nil
-    end
-    dns.delete_host host.body["hosts"][0]["id"] if host
-    dns.create_host(zone_id,"A",n.ipv4_address,:hostname => "#{node.name}")
+    dns = Souffle::Provider.plugin(system.try_opt(:dns_provider)).new
+    #dns.delete_entry(node)
+    dns.create_entry(node,n.ipv4_address)
   end
    
   # Sets the hostname for the given node for the chef run.
