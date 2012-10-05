@@ -68,6 +68,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
       :flavor_id => node.try_opt(:rackspace_flavor_id),
       :image_id => node.try_opt(:rackspace_image_id),
       :name => node.name)
+    Souffle::Log.info "#{node.name} Instance ID #{instance_info.id}"
     node.options[:rackspace_instance_id] = instance_info.id
     node.options[:node_password] = instance_info.password
     node.options[:node_name] = [node.name, node.domain].compact.join('.')
@@ -98,7 +99,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
   # 
   # @param [ Souffle::Node ] A node to terminate
   def kill_node(node)
-      Souffle::Log.info "Killing #{node.name}"
+      Souffle::Log.info "Killing #{node.name} with ID #{node.options[:rackspace_instance_id]}"
       @rackspace.delete_server(node.options[:rackspace_instance_id])
   end
   
@@ -155,7 +156,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
   # @param [ Souffle::Node ] node The node to wait until running on.
   # @param [ Fixnum ] poll_timeout The maximum number of seconds to wait.
   # @param [ Fixnum ] poll_interval The interval in seconds to poll EC2.
-  def wait_until_node_running(node, poll_timeout=600, poll_interval=4, &blk)
+  def wait_until_node_running(node, poll_timeout=600, poll_interval=30, &blk)
     rackspace = @rackspace; Souffle::PollingEvent.new(node) do
       timeout poll_timeout
       interval poll_interval
@@ -226,7 +227,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
     n = get_server(node)
     Souffle::PollingEvent.new(node) do
       timeout poll_timeout
-      interval EM::Ssh::Connection::TIMEOUT
+      interval 30
 
       pre_event do
         Souffle::Log.info "#{node.log_prefix} Waiting for ssh..."
@@ -273,11 +274,10 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
     return node.provisioner.error_occurred if iteration == max_iterations
 
     rackconnect_test = "curl -s -S https://ord.api.rackconnect.rackspace.com/v1/automation_status?format=JSON"
-    n = get_server(node)
     
     Souffle::PollingEvent.new(node) do
       timeout 400
-      interval EM::Ssh::Connection::TIMEOUT
+      interval 30
 
       pre_event do
         Souffle::Log.info "#{node.log_prefix} Waiting for rackconnect... (#{iteration}/#{max_iterations})"
@@ -285,25 +285,15 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
       end
 
       event_loop do
+        n = @provider.get_server(node)
         unless n.nil?
-          opts = {}
-          opts[:password] = node.options[:node_password]
-          opts[:paranoid] = false
-          address = n.addresses["private"].first["addr"]
-          
-          EM::Ssh.start(address, "root", opts) do |connection|
-            connection.errback  { |err| nil }
-            connection.callback do |ssh|
-              output = ssh.exec!(rackconnect_test)
-              ssh.close
-              if (output.to_s =~ /deployed/i)
-                event_complete
-                node.provisioner.booted
-              elsif (output.to_s =~ /failed/i)
-                event_complete
-                node.provisioner.error_occurred
-              end
-            end
+          status = n.metadata["rackconnect_automation_status"]
+          if (status.to_s =~ /deployed/i)
+            event_complete
+            node.provisioner.booted
+          elsif (status.to_s =~ /failed/i)
+            event_complete
+            node.provisioner.error_occurred
           end
         end
       end
@@ -355,6 +345,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
       ssh.exec!("mkdir /etc/chef")
       ssh.exec!("echo \"#{client_config}\" >> /etc/chef/client.rb")
       ssh.exec!("echo \"#{validation_pem}\" >> /etc/chef/validation.pem")
+      ssh.exec!("curl -L http://www.opscode.com/chef/install.sh | bash")
       ssh.exec!(client_cmds)
       #cleanup_temp_chef_files(ssh, n)
       node.provisioner.provisioned
