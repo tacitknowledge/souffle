@@ -67,7 +67,8 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
     instance_info = @rackspace.servers.create(
       :flavor_id => node.try_opt(:rackspace_flavor_id),
       :image_id => node.try_opt(:rackspace_image_id),
-      :name => node.name)
+      :name => node.name,
+      :options => {:disk_config => node.try_opt(:rackspace_disk_config)})
     Souffle::Log.info "#{node.name} Instance ID #{instance_info.id}"
     node.options[:rackspace_instance_id] = instance_info.id
     node.options[:node_password] = instance_info.password
