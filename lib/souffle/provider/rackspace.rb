@@ -64,11 +64,12 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
   # @param [ String ] tag The tag to use for the node.
   def create_node(node, tag=nil)
     node.options[:chef_provisioner] = node.try_opt(:type)
+    disk_config = node.try_opt(:rackspace_disk_config) || "AUTO"
     instance_info = @rackspace.servers.create(
       :flavor_id => node.try_opt(:rackspace_flavor_id),
       :image_id => node.try_opt(:rackspace_image_id),
       :name => node.name,
-      :options => {:disk_config => node.try_opt(:rackspace_disk_config)})
+      :disk_config => disk_config)
     Souffle::Log.info "#{node.name} Instance ID #{instance_info.id}"
     node.options[:rackspace_instance_id] = instance_info.id
     node.options[:node_password] = instance_info.password
