@@ -348,7 +348,10 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
       ssh.exec!("echo \"#{client_config}\" >> /etc/chef/client.rb")
       ssh.exec!("echo \"#{validation_pem}\" >> /etc/chef/validation.pem")
       ssh.exec!("curl -L http://www.opscode.com/chef/install.sh | bash")
-      ssh.exec!(client_cmds)
+      status = ssh.exec!("#{client_cmds} ; echo $?").split("\n").last
+      if status != "0"
+        Souffle::Log.error "#{node.log_prefix} Chef-client failure... Status #{status}"
+      end
       #cleanup_temp_chef_files(ssh, n)
       node.provisioner.provisioned
     end
