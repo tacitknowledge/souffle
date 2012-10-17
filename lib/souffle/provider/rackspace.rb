@@ -351,8 +351,9 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
       status = ssh.exec!("#{client_cmds} ; echo $?").split("\n").last
       if status != "0"
         Souffle::Log.error "#{node.log_prefix} Chef-client failure... Status #{status}"
+      else
+        cleanup_temp_chef_files(ssh, n)
       end
-      #cleanup_temp_chef_files(ssh, n)
       node.provisioner.provisioned
     end
   end
