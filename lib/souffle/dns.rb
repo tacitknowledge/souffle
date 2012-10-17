@@ -41,7 +41,7 @@ module Souffle::DNS
   end
 end
 
-_provider_dir = File.join(File.dirname(__FILE__), "provider")
+_provider_dir = File.join(File.dirname(__FILE__), "dns")
 Dir.glob("#{_provider_dir}/*").each do |s|
-  require "souffle/provider/dns/#{File.basename(s)}"
+  require "souffle/dns/#{File.basename(s)}"
 end
