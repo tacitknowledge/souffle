@@ -409,7 +409,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
   def ssh_block(node, user="root", pass=nil, opts={})
    n = get_server(node)
     if n.nil?
-      raise AwsInstanceDoesNotExist,
+      raise RackspaceInstanceDoesNotExist,
         "The Rackspace instance (#{node.options[:rackspace_instance_id]}) does not exist."
     else
       if pass.nil?

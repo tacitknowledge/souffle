@@ -20,6 +20,7 @@ gem "mixlib-log", ">= 1.3.0"
 gem "thin", "~> 1.4.1"
 gem "rack", "~> 1.4.1"
 gem "sinatra", "~> 1.3.2"
+gem "fog", "~> 1.6.0"
 
 # Add dependencies to develop your gem here.
 # Include everything needed to run rake, tests, features, etc.
