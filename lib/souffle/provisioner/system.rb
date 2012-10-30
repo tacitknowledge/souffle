@@ -118,8 +118,10 @@ class Souffle::Provisioner::System
   # System has completed provisioning.
   def system_provisioned
     @system.nodes.each do |n|
-      n.provisioner.provider.ssh_block(n) do |ssh|
-        ssh.exec!("chef-client")
+      if n.try_opt(:chef_provisioner).to_s.downcase == "client"
+        n.provisioner.provider.ssh_block(n) do |ssh|
+          ssh.exec!("chef-client")
+        end
       end
     end
     Souffle::Log.info "[#{system_tag}] System provisioned."
