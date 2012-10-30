@@ -144,13 +144,13 @@ class Souffle::Provisioner::Node
   # Kills the node entirely.
   def kill
     Souffle::Log.info "#{@node.log_prefix} Killing node..."
-    provider.kill(@node)
+    provider.kill([@node])
   end
 
   # Kills the node and restarts the creation loop.
-  def kill_and_recreate_node
+  def kill_and_recreate
     Souffle::Log.info "#{@node.log_prefix} Recreating node..."
-    provider.kill_and_recreate_node(@node)
+    provider.kill_and_recreate([@node])
   end
 
   # Handles any 

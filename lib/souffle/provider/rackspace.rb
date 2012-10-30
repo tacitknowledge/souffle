@@ -97,22 +97,6 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
     end
   end
   
-  # Takes a node and kills it.
-  # 
-  # @param [ Souffle::Node ] A node to terminate
-  def kill_node(node)
-      Souffle::Log.info "Killing #{node.name} with ID #{node.options[:rackspace_instance_id]}"
-      @rackspace.delete_server(node.options[:rackspace_instance_id])
-  end
-  
-  # Takes a list of nodes kills them and then recreates them.
-  # 
-  # @param [ Souffle::Node ] nodes The list of nodes to kill and recreate.
-  def kill_and_recreate_node(node)
-    kill_node(node)
-    node.provisioner.reclaimed
-  end
-  
   # Wait for the machine to boot up.
   # 
   # @param [ Souffle::Node ] node The node to boot up.
