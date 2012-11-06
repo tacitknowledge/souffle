@@ -164,7 +164,7 @@ class Souffle::Provisioner::Node
       err_msg =  "[#{@node.log_prefix}] Error creating node. "
       err_msg << "Killing and recreating..."
       Souffle::Log.error(err_msg)
-      kill_and_recreate_node
+      kill_and_recreate
     end
   end
 
