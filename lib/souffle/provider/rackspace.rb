@@ -81,9 +81,9 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
   # 
   # @param [ Souffle::Node ] nodes The list of nodes to terminate.
   def kill(nodes)
-    instance_id_list(nodes).each do |n|
+    nodes.each do |n|
       Souffle::Log.info "Killing #{n}"
-      @rackspace.delete_server(n)
+      @rackspace.delete_server(n.options[:rackspace_instance_id])
     end
   end
   
