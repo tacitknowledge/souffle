@@ -327,6 +327,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
     client_cmds << "-S #{node.try_opt(:chef_server)} "
     client_cmds << "-E #{node.try_opt(:chef_environment)} " unless node.try_opt(:chef_environment).nil?
     n = node; ssh_block(node) do |ssh|
+      update_ntp(ssh, n)
       write_temp_chef_json(ssh, n)
       ssh.exec!("mkdir /etc/chef")
       ssh.exec!("echo \"#{client_config}\" >> /etc/chef/client.rb")
@@ -390,6 +391,14 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
   def cleanup_temp_chef_files(ssh, node)
     ssh.exec!("rm -f /tmp/client.json")
     ssh.exec!("rm -f /etc/chef/validation.pem")
+  end
+  
+  # Updates NTP to sync time.
+  #
+  # @param [ EventMachine::Ssh::Connection ] ssh The em-ssh connection.
+  # @param [ Souffle::Node ] node The given node to work with.
+  def update_ntp(ssh, node)
+    ssh.exec!("ntpdate pool.ntp.org")
   end
     
   # Yields an ssh object to manage the commands naturally from there.
