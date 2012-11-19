@@ -444,7 +444,6 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
       else
         @provider.get_server(node, iteration+1)
       end
-    end
     return rackspace unless rackspace.nil?
   end
   
