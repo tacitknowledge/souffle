@@ -441,7 +441,6 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
       if iteration>max_attempts
         raise Souffle::Exceptions::RackspaceApiError,
           "#{node.log_prefix} - Instance_ID: #{node.options[:rackspace_instance_id]} - #{e.class} :: #{e}"
-        end
       else
         @provider.get_server(node, iteration+1)
       end
