@@ -206,7 +206,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
   # 
   # @yield [ Eventmachine::Ssh:Session ] The ssh session.
   def wait_for_boot(node, user="root", pass=nil, opts={},
-                    poll_timeout=100, iteration=0, &blk)
+                    poll_timeout=200, iteration=0, &blk)
     return node.provisioner.error_occurred if iteration == 3
 
     rackspace=@rackspace
@@ -438,7 +438,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
     rackspace = @rackspace.servers.get(node.options[:rackspace_instance_id])
     rescue => e
       raise Souffle::Exceptions::RackspaceApiError,
-        "#{e.class} :: #{e}"
+        "#{node.log_prefix} - Instance_ID: #{node.options[:rackspace_instance_id]} - #{e.class} :: #{e}"
     return rackspace unless rackspace.nil?
   end
   
