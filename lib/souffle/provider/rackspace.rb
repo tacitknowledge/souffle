@@ -434,11 +434,17 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
   # Yields a rackspace server object to manage the commands naturally from there.
   # 
   # @param [ Souffle::Node ] node The node to run commands against.
-  def get_server(node)
+  def get_server(node, iteration=0)
+    max_attempts=3
     rackspace = @rackspace.servers.get(node.options[:rackspace_instance_id])
     rescue => e
-      raise Souffle::Exceptions::RackspaceApiError,
-        "#{node.log_prefix} - Instance_ID: #{node.options[:rackspace_instance_id]} - #{e.class} :: #{e}"
+      if iteration>max_attempts
+        raise Souffle::Exceptions::RackspaceApiError,
+          "#{node.log_prefix} - Instance_ID: #{node.options[:rackspace_instance_id]} - #{e.class} :: #{e}"
+        end
+      else
+        @provider.get_server(node, iteration+1)
+      end
     return rackspace unless rackspace.nil?
   end
   
