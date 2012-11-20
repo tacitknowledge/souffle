@@ -74,7 +74,6 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
     rescue => e 
       Souffle::Log.error "#{e.class}::#{e} - Error creating server"
       node.provisioner.error_occurred
-      next
     end
     Souffle::Log.info "#{node.name} Instance ID #{instance_info.id}"
     node.options[:rackspace_instance_id] = instance_info.id
