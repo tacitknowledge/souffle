@@ -157,15 +157,15 @@ class Souffle::Provisioner::Node
   def error_handler
     @failures+=1
     Souffle::Log.info "#{@node.log_prefix} Handling node error..."
-    if @failures >= @max_failures
+    #if @failures >= @max_failures
       #Souffle::Log.error "[#{@node.log_prefix}] Complete failure. Halting Creation."
       #@node.system.creation_halted
-    else
-      #err_msg =  "[#{@node.log_prefix}] Error creating node. "
-      #err_msg << "Killing and recreating..."
-      #Souffle::Log.error(err_msg)
-      #kill_and_recreate
-    end
+    #else
+      err_msg =  "[#{@node.log_prefix}] Error creating node. "
+      err_msg << "Killing and recreating..."
+      Souffle::Log.error(err_msg)
+      kill_and_recreate
+    #end
   end
 
   # Helper function for the node's system provider.
