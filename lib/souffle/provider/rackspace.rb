@@ -74,6 +74,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
     rescue => e 
       Souffle::Log.error "#{e.class}::#{e} - Error creating server"
       node.provisioner.error_occurred
+      next
     end
     Souffle::Log.info "#{node.name} Instance ID #{instance_info.id}"
     node.options[:rackspace_instance_id] = instance_info.id
@@ -478,7 +479,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
       else
         logger = Logger.new('/dev/null')
       end
-    begin
+    
       Fog::Compute::RackspaceV2.new(
         :rackspace_api_key  => access_key,
         :rackspace_username => access_name,
