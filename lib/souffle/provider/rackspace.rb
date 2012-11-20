@@ -478,7 +478,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
       else
         logger = Logger.new('/dev/null')
       end
-
+    begin
       Fog::Compute::RackspaceV2.new(
         :rackspace_api_key  => access_key,
         :rackspace_username => access_name,
