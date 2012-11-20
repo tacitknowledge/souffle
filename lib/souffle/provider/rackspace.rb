@@ -142,7 +142,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
   # @param [ Souffle::Node ] node The node to wait until running on.
   # @param [ Fixnum ] poll_timeout The maximum number of seconds to wait.
   # @param [ Fixnum ] poll_interval The interval in seconds to poll EC2.
-  def wait_until_node_running(node, poll_timeout=600, poll_interval=30, &blk)
+  def wait_until_node_running(node, poll_timeout=7200, poll_interval=30, &blk)
     rackspace = @rackspace; Souffle::PollingEvent.new(node) do
       timeout poll_timeout
       interval poll_interval
@@ -206,7 +206,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
   # 
   # @yield [ Eventmachine::Ssh:Session ] The ssh session.
   def wait_for_boot(node, user="root", pass=nil, opts={},
-                    poll_timeout=200, iteration=0, &blk)
+                    poll_timeout=7200, iteration=0, &blk)
     return node.provisioner.error_occurred if iteration == 3
 
     rackspace=@rackspace
@@ -262,7 +262,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
     rackconnect_test = "curl -s -S https://ord.api.rackconnect.rackspace.com/v1/automation_status?format=JSON"
     
     Souffle::PollingEvent.new(node) do
-      timeout 400
+      timeout 1440
       interval 30
 
       pre_event do
@@ -442,6 +442,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
         raise Souffle::Exceptions::RackspaceApiError,
           "#{node.log_prefix} - Instance_ID: #{node.options[:rackspace_instance_id]} - #{e.class} :: #{e}"
       else
+        sleep 5
         node.provisioner.provider.get_server(node, iteration+1)
       end
     return rackspace unless rackspace.nil?
