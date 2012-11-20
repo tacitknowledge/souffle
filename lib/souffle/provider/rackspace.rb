@@ -70,6 +70,10 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
       :image_id => node.try_opt(:rackspace_image_id),
       :name => node.name,
       :disk_config => disk_config)
+    rescue => e
+      Souffle::Log.error "#{e.class}::#{e} - Error creating server"
+      node.provisioner.error_occurred
+    end
     Souffle::Log.info "#{node.name} Instance ID #{instance_info.id}"
     node.options[:rackspace_instance_id] = instance_info.id
     node.options[:node_password] = instance_info.password
