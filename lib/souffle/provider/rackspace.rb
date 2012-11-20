@@ -65,12 +65,13 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
   def create_node(node, tag=nil)
     node.options[:chef_provisioner] = node.try_opt(:type)
     disk_config = node.try_opt(:rackspace_disk_config) || "AUTO"
+    begin
     instance_info = @rackspace.servers.create(
       :flavor_id => node.try_opt(:rackspace_flavor_id),
       :image_id => node.try_opt(:rackspace_image_id),
       :name => node.name,
       :disk_config => disk_config)
-    rescue => e
+    rescue => e 
       Souffle::Log.error "#{e.class}::#{e} - Error creating server"
       node.provisioner.error_occurred
     end
@@ -441,6 +442,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
   # @param [ Souffle::Node ] node The node to run commands against.
   def get_server(node, iteration=0)
     max_attempts=3
+    begin
     rackspace = @rackspace.servers.get(node.options[:rackspace_instance_id])
     rescue => e
       if iteration>max_attempts
@@ -450,6 +452,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
         sleep 5
         node.provisioner.provider.get_server(node, iteration+1)
       end
+    end
     return rackspace unless rackspace.nil?
   end
   
