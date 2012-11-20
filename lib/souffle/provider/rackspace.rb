@@ -442,7 +442,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
         raise Souffle::Exceptions::RackspaceApiError,
           "#{node.log_prefix} - Instance_ID: #{node.options[:rackspace_instance_id]} - #{e.class} :: #{e}"
       else
-        @provider.get_server(node, iteration+1)
+        node.provisioner.provider.get_server(node, iteration+1)
       end
     return rackspace unless rackspace.nil?
   end
