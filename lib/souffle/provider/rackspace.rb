@@ -325,7 +325,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
   def provision_chef_client(node)
     validation_pem = node.try_opt(:validation_pem)
     client_config = "log_level\t:info
-    log_location\t\"/var/log/chef/chef-client.log\"
+    log_location\tSTDOUT
     chef_server_url\t'#{node.try_opt(:chef_server)}'
     validation_client_name\t'chef-validator'"
     client_cmds =  "chef-client -N #{node.options[:node_name]} "
