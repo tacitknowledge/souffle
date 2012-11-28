@@ -346,6 +346,8 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
         stdout.split("\n").each do |line|
           Souffle::Log.error "#{node.log_prefix} #{line}"
         end
+        Souffle::Log.error "[#{node.tag}] System Creation Failure."
+        @system.creation_halted
       else
         cleanup_temp_chef_files(ssh, n)
       end
