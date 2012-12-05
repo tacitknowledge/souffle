@@ -54,10 +54,18 @@ class Souffle::Server
 
   # Starts a single instance of the provisioner.
   def run_instance
-    Souffle::Log.info "Single instance runs are not currently implemented..."
-    # system = Souffle::System.from_hash(data)
-    # provider = Souffle::Provider.plugin(system.try_opt(:provider)).new
-    # system_tag = provider.create_system(system)
+    EM.synchrony do
+      begin
+       data = JSON.parse(Souffle::Config[:json], :symbolize_keys => true)
+      rescue
+        return {  :success => false,
+                :message => "Invalid json in request." }.to_json
+      end
+      puts data
+      system = Souffle::System.from_hash(data)
+      provider = Souffle::Provider.plugin(system.try_opt(:provider)).new
+      system_tag = provider.create_system(system)
+    end
   end
   
 end

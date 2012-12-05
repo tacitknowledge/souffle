@@ -125,6 +125,9 @@ class Souffle::Provisioner::System
       end
     end
     Souffle::Log.info "[#{system_tag}] System provisioned."
+    unless Souffle::Config[:server]
+      exit 0
+    end
   end
 
   # Updates the number of nodes provisioned for the system provisioner.
@@ -144,6 +147,9 @@ class Souffle::Provisioner::System
     if @failures >= @max_failures
       Souffle::Log.error "[#{system_tag}] Complete failure. Halting Creation."
       creation_halted
+      unless Souffle::Config[:server]
+        exit 1
+      end
     else
       err_msg =  "[#{system_tag}] Error creating system. "
       err_msg << "Killing and recreating..."
