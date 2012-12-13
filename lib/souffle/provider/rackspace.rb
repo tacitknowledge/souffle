@@ -350,7 +350,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
           Souffle::Log.error "#{node.log_prefix} #{line}"
         end
         Souffle::Log.error "[#{node.tag}] System Creation Failure."
-        node.provisioner.creation_halted
+        node.system.provisioner.creation_halted
       else
         stdout.split("\n").each do |line|
           Souffle::Log.info "#{node.log_prefix} #{line}"
