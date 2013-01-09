@@ -275,7 +275,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
       interval 30
 
       pre_event do
-        Souffle::Log.info "#{node.log_prefix} Waiting for rackconnect... (#{iteration}/#{max_iterations})"
+        Souffle::Log.info "#{node.log_prefix} Waiting for rackconnect... (#{iteration+1}/#{max_iterations})"
         @provider = node.provisioner.provider
       end
 
