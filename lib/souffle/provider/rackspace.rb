@@ -90,11 +90,11 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
   # @param [ Souffle::Node ] nodes The list of nodes to terminate.
   def kill(nodes)
     nodes.each do |n|
-      Souffle::Log.info "Killing #{n}"
+      Souffle::Log.info "#{node.log_prefix} Killing #{n}"
       begin
         @rackspace.delete_server(n.options[:rackspace_instance_id])
       rescue Fog::Compute::RackspaceV2::NotFound => e
-        Souffle::Log.error "#{e} - #{node.name} does not exist..."
+        Souffle::Log.error "#{node.log_prefix} #{e} - #{node.name} does not exist..."
       end
     end
   end
