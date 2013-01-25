@@ -151,7 +151,7 @@ module Souffle::Provider
       EM::Ssh.start(address, user, opts) do |connection|
         connection.errback do |err|
           Souffle::Log.info "SSH_BLOCK USER #{user} PASS #{pass} IP #{address} OPTS #{opts}"
-          Souffle::Log.error "SSH Error: #{err} (#{err.class})"
+          Souffle::Log.error "#{opts} SSH Error: #{err} (#{err.class}) "
         end
         connection.callback { |ssh| yield(ssh) if block_given?; ssh.close }
       end
