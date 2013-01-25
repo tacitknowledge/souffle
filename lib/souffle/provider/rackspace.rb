@@ -376,9 +376,9 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
   # @param [ Souffle:Node ] node The node to update dns for.
   def setup_dns(node)
     n = get_server(node)
-    dns = Souffle::DNS.plugin(system.try_opt(:dns_provider)).new
+    @dns = Souffle::DNS.plugin(system.try_opt(:dns_provider)).new
     #dns.delete_entry(node)
-    dns.create_entry(node,n.ipv4_address)
+    #dns.create_entry(node,n.ipv4_address)
     
     
     Souffle::PollingEvent.new(node) do
@@ -387,8 +387,8 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
 
       pre_event do
         Souffle::Log.info "#{node.log_prefix} Setting up DNS..."
-        @dns = Souffle::DNS.plugin(system.try_opt(:dns_provider)).new
-        @job_id = dns.create_entry(node,n.ipv4_address)
+        #@dns = Souffle::DNS.plugin(system.try_opt(:dns_provider)).new
+        @job_id = @dns.create_entry(node,n.ipv4_address)
       end
 
       event_loop do
