@@ -90,7 +90,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
   # @param [ Souffle::Node ] nodes The list of nodes to terminate.
   def kill(nodes)
     nodes.each do |n|
-      Souffle::Log.info "#{node.log_prefix} Killing #{n}"
+      Souffle::Log.info "#{n.log_prefix} Killing #{n}"
       begin
         @rackspace.delete_server(n.options[:rackspace_instance_id])
       rescue Fog::Compute::RackspaceV2::NotFound => e
@@ -386,7 +386,8 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
       interval 30
 
       pre_event do
-        n = node.provisioner.provider.get_server(node)
+        @provider = node.provisioner.provider
+        n = @provider.get_server(node)
         Souffle::Log.info "#{node.log_prefix} Setting up DNS..."
         @dns = Souffle::DNS.plugin(@system.try_opt(:dns_provider)).new
         @job_id = @dns.create_entry(node,n.ipv4_address)
