@@ -21,7 +21,9 @@ class Souffle::DNS::Rackspace < Souffle::DNS::Base
     record[:name] = "#{node.name}.#{node.domain}"
     record[:type] = "A"
     record[:data] = "#{ip}"
-    @dns.add_records(domain_id,[record])
+    Souffle::Log.info "#{node.log_prefix} Adding DNS A Record #{record}"
+    add_record = @dns.add_records(domain_id,[record])
+    add_record.body["jobId"]
   end
   
   def delete_entry(node)
@@ -32,5 +34,9 @@ class Souffle::DNS::Rackspace < Souffle::DNS::Base
       record = nil
     end
     @dns.remove_record(record) if record
+  end
+  
+  def check_entry_status(job_id)
+    @dns.callback(job_id).body["status"]
   end
 end

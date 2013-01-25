@@ -91,7 +91,11 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
   def kill(nodes)
     nodes.each do |n|
       Souffle::Log.info "Killing #{n}"
-      @rackspace.delete_server(n.options[:rackspace_instance_id])
+      begin
+        @rackspace.delete_server(n.options[:rackspace_instance_id])
+      rescue Fog::Compute::RackspaceV2::NotFound => e
+        Souffle::Log.error "#{e} - #{node.name} does not exist..."
+      end
     end
   end
   
@@ -163,7 +167,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
 
       event_loop do
         instance = @provider.get_server(node)
-        node.provisioner.error_occurred if instance.nil?
+        node.provisioner.error_occurred if (instance.nil? || instance.state.nil?)
         if instance.state.downcase == "active"
           event_complete
           @blk.call unless @blk.nil?
@@ -284,9 +288,15 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
         unless n.nil?
           status = n.metadata["rackconnect_automation_status"]
           if (status.to_s =~ /deployed/i)
+            Souffle::Log.info "#{node.log_prefix} Rackconnect Deployed."
             event_complete
             node.provisioner.booted
           elsif (status.to_s =~ /failed/i)
+            Souffle::Log.error "#{node.log_prefix} Rackconnect Failed."
+            event_complete
+            node.provisioner.error_occurred
+          elsif (status.to_s.nil?)
+            Souffle::Log.error "#{node.log_prefix} No Rackconnect Status."
             event_complete
             node.provisioner.error_occurred
           end
@@ -369,6 +379,35 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
     dns = Souffle::DNS.plugin(system.try_opt(:dns_provider)).new
     #dns.delete_entry(node)
     dns.create_entry(node,n.ipv4_address)
+    
+    
+    Souffle::PollingEvent.new(node) do
+      timeout 300
+      interval 30
+
+      pre_event do
+        Souffle::Log.info "#{node.log_prefix} Setting up DNS..."
+        @dns = Souffle::DNS.plugin(system.try_opt(:dns_provider)).new
+        @job_id = dns.create_entry(node,n.ipv4_address)
+      end
+
+      event_loop do
+        status = @dns.check_entry_status(@job_id)
+        Souffle::Log.info "#{node.log_prefix} DNS Status: #{status}"
+        if(status =~ /RUNNING/)
+        elsif(status =~ /COMPLETED/)
+          event_complete
+        else
+          node.provisioner.error_occurred
+        end
+      end
+
+      error_handler do
+        Souffle::Log.error "#{node.log_prefix} DNS Timeout..."
+        node.provisioner.error_occurred
+      end
+    end
+    
   end
    
   # Sets the hostname for the given node for the chef run.
@@ -443,7 +482,8 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
         pass = node.options[:node_password]
       end
       opts[:password] = pass unless pass.nil?
-      Souffle::Log.info "USER #{user} PASS #{pass} IP #{n.addresses["private"].first["addr"]} OPTS #{opts}"
+      opts[:system_tag] = "#{node.log_prefix}"
+      Souffle::Log.info "#{node.log_prefix} USER #{user} PASS #{pass} IP #{n.addresses["private"].first["addr"]} OPTS #{opts}"
       super(n.addresses["private"].first["addr"], user, pass, opts)
     end
   end
