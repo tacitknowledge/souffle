@@ -296,9 +296,11 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
             event_complete
             node.provisioner.error_occurred
           elsif (status.to_s.nil?)
-            Souffle::Log.error "#{node.log_prefix} No Rackconnect Status."
-            event_complete
-            node.provisioner.error_occurred
+            if(iteration > 1)
+              Souffle::Log.error "#{node.log_prefix} No Rackconnect Status."
+              event_complete
+              node.provisioner.error_occurred
+            end
           end
         end
       end
