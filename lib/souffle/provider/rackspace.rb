@@ -389,7 +389,12 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
         @provider = node.provisioner.provider
         n = @provider.get_server(node)
         Souffle::Log.info "#{node.log_prefix} Setting up DNS..."
-        @job_id = @dns.create_entry(node,n.ipv4_address)
+        begin
+          @job_id = @dns.create_entry(node,n.ipv4_address)
+        rescue => e
+          Souffle::Log.error "#{node.log_prefix} #{e}"
+          node.provisioner.error_occurred
+        end
       end
 
       event_loop do
