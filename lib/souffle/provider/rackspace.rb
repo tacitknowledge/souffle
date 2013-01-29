@@ -338,6 +338,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
   # 
   # @todo Chef client provisioner needs to be completed.
   def provision_chef_client(node)
+    Souffle::Log.info "#{node.log_prefix} Starting Chef Provisioning..."
     validation_pem = node.try_opt(:validation_pem)
     client_config = "log_level\t:info
     log_location\tSTDOUT
@@ -377,12 +378,9 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
   # 
   # @param [ Souffle:Node ] node The node to update dns for.
   def setup_dns(node)
-    #n = get_server(node)
+
     @dns = Souffle::DNS.plugin(system.try_opt(:dns_provider)).new
-    #dns.delete_entry(node)
-    #dns.create_entry(node,n.ipv4_address)
-    
-    
+
     Souffle::PollingEvent.new(node) do
       timeout 300
       interval 30
