@@ -11,16 +11,21 @@ class Souffle::Provisioner::System
   state_machine :state, :initial => :initializing do
     after_transition any => :handling_error, :do => :error_handler
     after_transition :initializing => :creating, :do => :create
-    after_transition :creating => :provisioning, :do => :provision
+    after_transition :creating => :load_balancing, :do => :load_balance
+    after_transition :load_balancing => :provisioning, :do => :provision
     after_transition any => :initializing, :do => :create
     after_transition :provisioning => :complete, :do => :system_provisioned
 
     event :initialized do
       transition :initializing => :creating
     end
-
+    
     event :created do
-      transition :creating => :provisioning
+      transition :creating => :load_balancing
+    end
+    
+    event :load_balanced do
+      transition :load_balancing => :provisioning
     end
 
     event :provisioned do
@@ -113,6 +118,18 @@ class Souffle::Provisioner::System
         error_occurred
       end
     end
+  end
+  
+  # Creates the system load balancers
+  def load_balance
+    @lbs = Souffle::LoadBalancer.plugin(system.try_opt(:load_balancer_provider)).new
+    Souffle::Log.info "[#{system_tag}] Creating load balancers..."
+    @system.try_opt(:load_balancers).each do |lb|
+      nodes = @system.nodes.map{ |n| n if n.run_list.include? lb[:role] }
+      Souffle::Log.info "[#{system_tag}] #{nodes}"
+      @lbs.create_lb(lb[:name], nodes, vips)
+    end
+    load_balanced
   end
 
   # System has completed provisioning.

@@ -379,13 +379,12 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
   # @param [ Souffle:Node ] node The node to update dns for.
   def setup_dns(node)
 
-    @dns = Souffle::DNS.plugin(system.try_opt(:dns_provider)).new
-
     Souffle::PollingEvent.new(node) do
       timeout 300
       interval 30
 
       pre_event do
+        @dns = Souffle::DNS.plugin(system.try_opt(:dns_provider)).new
         @provider = node.provisioner.provider
         n = @provider.get_server(node)
         Souffle::Log.info "#{node.log_prefix} Setting up DNS..."
