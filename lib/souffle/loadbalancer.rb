@@ -1,6 +1,6 @@
 require 'fileutils'
 
-# Souffle's DNS provider
+# Souffle's LoadBalancer provider
 module Souffle::LoadBalancer
   class << self
     # Returns the list of available provider plugins.
@@ -14,7 +14,7 @@ module Souffle::LoadBalancer
     #
     # @param [ String ] name The name of the plugin to select.
     #
-    # @return [ Souffle::DNS::Base ] The plugin with the given name.
+    # @return [ Souffle::LoadBalancer::Base ] The plugin with the given name.
     def plugin(name)
       plug = constants.select { |k| k.to_s.downcase == name.downcase }.first
       Souffle::DNS.const_get(plug)
@@ -26,7 +26,7 @@ module Souffle::LoadBalancer
   class Base
     attr_accessor :system
 
-    # Initialize a new DNS provider for a given system.
+    # Initialize a new LoadBalancer provider for a given system.
     #
     # @param [ Souffle::System ] system The system to provision.
     def initialize(system=Souffle::System.new)
