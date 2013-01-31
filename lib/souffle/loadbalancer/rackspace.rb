@@ -6,10 +6,10 @@ class Souffle::LoadBalancer::Rackspace < Souffle::LoadBalancer::Base
   def initialize
     super()
     begin
-    @lbs = Fog::LoadBalancers::Rackspace.new({
+    @lbs = Fog::Rackspace::LoadBalancers.new({
       :rackspace_api_key  => @system.try_opt(:rackspace_access_key),
       :rackspace_username => @system.try_opt(:rackspace_access_name),
-      :rackspace_lb_endpoint => "https://ord.loadbalancers.api.rackspacecloud.com/v1.0/"
+      :rackspace_lb_endpoint => (@system.try_opt(:rackspace_lb_endpoint) || "https://ord.loadbalancers.api.rackspacecloud.com/v1.0/")
       })
     rescue => e
       Souffle::Log.error "#{e.class} :: #{e}"
@@ -17,6 +17,9 @@ class Souffle::LoadBalancer::Rackspace < Souffle::LoadBalancer::Base
   end
   
   def create_lb(lb, nodes, vips)
+    if @lbs.nil?
+      initialize
+    end
     lb_nodes = []
     nodes.each do |n|
       node = n.provisioner.provider.get_server(n)
