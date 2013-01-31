@@ -126,8 +126,9 @@ class Souffle::Provisioner::System
     Souffle::Log.info "[#{system_tag}] Creating load balancers..."
     @system.try_opt(:load_balancers).each do |lb|
       @system.nodes.each do |n|
+        Souffle::Log.info "#{system_tag}] #{n.methods}"
          #if n.run_list.include? lb[:role] }
-        Souffle::Log.info "[#{system_tag}] #{n.runlist} :: #{lb[:role]}"
+        Souffle::Log.info "[#{system_tag}] #{n.run_list} :: #{lb[:role]}"
       end
       vips = lb[:vips]
       Souffle::Log.info "[#{system_tag}] #{nodes}"
