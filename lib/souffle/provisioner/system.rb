@@ -134,6 +134,7 @@ class Souffle::Provisioner::System
         Souffle::Log.info "[#{system_tag}] #{n.run_list} :: #{lb[:role]}"
       end
       vips = lb[:vips]
+      lb[:system_tag] = system_tag
       Souffle::Log.info "[#{system_tag}] #{nodes}"
       @lbs.create_lb(lb, nodes, vips)
     end
