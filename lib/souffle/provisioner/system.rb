@@ -135,7 +135,7 @@ class Souffle::Provisioner::System
       end
       vips = lb[:vips]
       Souffle::Log.info "[#{system_tag}] #{nodes}"
-      @lbs.create_lb(lb[:name], nodes, vips)
+      @lbs.create_lb(lb, nodes, vips)
     end
     load_balanced
   end
