@@ -20,14 +20,14 @@ class Souffle::LoadBalancer::Rackspace < Souffle::LoadBalancer::Base
     nodes.each do |n|
       node = n.provisioner.provider.get_server(n)
       address = node.addresses["private"].first["addr"]
-      Souffle::Log.info "#{node.log_prefix} #{name} Address: #{address}"
-      lb_nodes << {"address" => address, "port" => lb[:port], "condition" => "ENABLED" }
+      Souffle::Log.info "#{n.log_prefix} #{lb[:name]} Address: #{address}"
+      lb_nodes << {"address" => address, "port" => lb[:node_port], "condition" => "ENABLED" }
     end
     #vips = [ {"type" => "PUBLIC"}]
     #nodes = [ {"address" => "10.176.98.127", "port" => 80, "condition" => "ENABLED"}]
 
     Souffle::Log.info "#{lb[:system_tag]} Adding Load Balanacer Name: #{lb[:name]} Nodes: #{lb_nodes} Vips #{vips} "
-    #@lbs.create_load_balancer("test_lb_from_fog", "HTTP", 80, vips, nodes)
+    #@lbs.create_load_balancer("test_lb_from_fog", "HTTP", lb[:lb_port], vips, nodes)
   end
 
 end
