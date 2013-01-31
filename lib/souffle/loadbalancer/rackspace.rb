@@ -27,7 +27,7 @@ class Souffle::LoadBalancer::Rackspace < Souffle::LoadBalancer::Base
     #nodes = [ {"address" => "10.176.98.127", "port" => 80, "condition" => "ENABLED"}]
 
     Souffle::Log.info "#{lb[:system_tag]} Adding Load Balanacer Name: #{lb[:name]} Nodes: #{lb_nodes} Vips #{vips} "
-    #@lbs.create_load_balancer("test_lb_from_fog", "HTTP", lb[:lb_port], vips, nodes)
+    @lbs.create_load_balancer(lb[:name], "HTTP", lb[:lb_port], vips, lb_nodes)
   end
 
 end
