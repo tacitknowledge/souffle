@@ -17,7 +17,7 @@ module Souffle::LoadBalancer
     # @return [ Souffle::LoadBalancer::Base ] The plugin with the given name.
     def plugin(name)
       plug = constants.select { |k| k.to_s.downcase == name.downcase }.first
-      Souffle::DNS.const_get(plug)
+      Souffle::LoadBalancer.const_get(plug)
     rescue Souffle::Exceptions::PluginDoesNotExist => e
       Souffle::Log.error "#{e.message}:\n#{e.backtrace.join("\n")}"
     end

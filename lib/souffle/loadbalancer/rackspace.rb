@@ -16,15 +16,16 @@ class Souffle::LoadBalancer::Rackspace < Souffle::LoadBalancer::Base
   end
   
   def create_lb(name, nodes, vips)
-    
+    nodes.each do |n|
+      node = n.provisioner.provider.get_server(n)
+      address = n.addresses["private"].first["addr"]
+      Souffle::Log.info "#{node.log_prefix} #{name} Address: #{address}"
+    end
     #vips = [ {"type" => "PUBLIC"}]
     #nodes = [ {"address" => "10.176.98.127", "port" => 80, "condition" => "ENABLED"}]
 
     Souffle::Log.info "#{node.log_prefix} Adding Load Balanacer Name: #{name} Nodes: #{nodes} Vips #{vips}"
     #@lbs.create_load_balancer("test_lb_from_fog", "HTTP", 80, vips, nodes)
   end
-  
-  def check_entry_status(job_id)
-    @dns.callback(job_id).body["status"]
-  end
+
 end
