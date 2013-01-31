@@ -379,7 +379,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
   # @param [ Souffle:Node ] node The node to update dns for.
   def setup_dns(node)
 
-    Souffle::PollingEvent.new(node) do
+    system=@system;Souffle::PollingEvent.new(node) do
       timeout 300
       interval 30
 
