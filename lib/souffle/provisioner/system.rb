@@ -136,13 +136,11 @@ class Souffle::Provisioner::System
       Souffle::Log.info "[#{system_tag}] #{nodes}"
       @lbs.create_lb(lb, nodes, vips)
       @system.nodes.each do |n|
-        if n.run_list.include? lb[:role]
-          node_ip = n.options[:node_ip]
-          lb_ip = @lbs.get_lb_ip(lb[:name])
-          node_name = n.name
-          n.options[:attributes].merge!(JSON.parse(ERB.new(lb[:attrs_erb].to_json).result(binding)))
-          Souffle::Log.info "[#{system_tag}] Node attrs: #{n.options[:attributes]}"
-        end
+        node_ip = n.options[:node_ip]
+        lb_ip = @lbs.get_lb_ip(lb[:name])
+        node_name = n.name
+        n.options[:attributes].merge!(JSON.parse(ERB.new(lb[:attrs_erb].to_json).result(binding)))
+        Souffle::Log.info "[#{system_tag}] Node attrs: #{n.options[:attributes]}"
       end
     end
     load_balanced
