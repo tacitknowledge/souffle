@@ -30,9 +30,10 @@ class Souffle::LoadBalancer::Rackspace < Souffle::LoadBalancer::Base
 
     Souffle::Log.info "#{lb[:system_tag]} Adding Load Balanacer Name: #{lb[:name]} Nodes: #{lb_nodes} Vips #{vips} "
     @lbs.create_load_balancer(lb[:name], "HTTP", lb[:lb_port], vips, lb_nodes)
+    wait_for_lb(lb[:name])
     @lbs.create_access_rule(get_lb_id(lb[:name]), "0.0.0.0/0", "DENY")
-    @lbs.set_monitor("100505","CONNECT",10,5,2)
-    @lbs.update_load_balancer("100505", :algorithm => "LEAST_CONNECTIONS")
+    @lbs.set_monitor(get_lb_id(lb[:name]),"CONNECT",10,5,2)
+    @lbs.update_load_balancer(get_lb_id(lb[:name]), :algorithm => "LEAST_CONNECTIONS")
   end
   
   def get_lb_ip(name)
@@ -45,6 +46,15 @@ class Souffle::LoadBalancer::Rackspace < Souffle::LoadBalancer::Base
     initialize if @lbs.nil?
     lb = @lbs.load_balancers.select { |lb| lb.name = name }
     lb.first.id
+  end
+  
+  def wait_for_lb(name)
+    initialize if @lbs.nil?
+    lb =  @lbs.load_balancers.select { |lb| lb.name = name }
+    until(lb.first.state == "ACTIVE")
+      sleep 5
+      lb =  @lbs.load_balancers.select { |lb| lb.name = name }
+    end
   end
   
 end
