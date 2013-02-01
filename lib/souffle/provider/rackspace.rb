@@ -168,7 +168,6 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
       event_loop do
         instance = @provider.get_server(node)
         node.provisioner.error_occurred if (instance.nil? || instance.state.nil?)
-        node.options[:node_ip] = instance.addresses["private"].first["addr"]
         if instance.state.downcase == "active"
           event_complete
           @blk.call unless @blk.nil?
@@ -243,6 +242,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
           opts[:password] = pass unless pass.nil?
           opts[:paranoid] = false
           address = n.addresses["private"].first["addr"]
+          node.options[:node_ip] = address
           Souffle::Log.info "USER #{user} PASS #{pass} IP #{address} OPTS #{opts}"
           EM::Ssh.start(address, user, opts) do |connection|
             connection.errback  { |err| nil }
