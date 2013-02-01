@@ -29,13 +29,13 @@ class Souffle::LoadBalancer::Rackspace < Souffle::LoadBalancer::Base
     #nodes = [ {"address" => "10.176.98.127", "port" => 80, "condition" => "ENABLED"}]
 
     Souffle::Log.info "#{lb[:system_tag]} Adding Load Balanacer Name: #{lb[:name]} Nodes: #{lb_nodes} Vips #{vips} "
-    @lbs.create_load_balancer(lb[:name], "HTTP", lb[:lb_port], vips, lb_nodes)
+    load_balancer = @lbs.create_load_balancer(lb[:name], "HTTP", lb[:lb_port], vips, lb_nodes)
     wait_for_lb(lb[:name])
-    @lbs.create_access_rule(get_lb_id(lb[:name]), "0.0.0.0/0", "DENY")
+    load_balancer.create_access_rule(get_lb_id(lb[:name]), "0.0.0.0/0", "DENY")
     wait_for_lb(lb[:name])
-    @lbs.set_monitor(get_lb_id(lb[:name]),"CONNECT",10,5,2)
+    load_balancer.set_monitor(get_lb_id(lb[:name]),"CONNECT",10,5,2)
     wait_for_lb(lb[:name])
-    @lbs.update_load_balancer(get_lb_id(lb[:name]), :algorithm => "LEAST_CONNECTIONS")
+    load_balancer.update_load_balancer(get_lb_id(lb[:name]), :algorithm => "LEAST_CONNECTIONS")
   end
   
   def get_lb_ip(name)
