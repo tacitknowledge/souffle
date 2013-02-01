@@ -125,6 +125,7 @@ class Souffle::Provisioner::System
     @lbs = Souffle::LoadBalancer.plugin(@system.try_opt(:load_balancer_provider)).new
     Souffle::Log.info "[#{system_tag}] Creating load balancers..."
     @system.try_opt(:load_balancers).each do |lb|
+      Souffle::Log.info "[#{system_tag}] Creating load balancer #{lb[:name]}..."
       nodes = []
       @system.nodes.each do |n|
         if n.run_list.include? lb[:role]
@@ -133,7 +134,6 @@ class Souffle::Provisioner::System
       end
       vips = lb[:vips]
       lb[:system_tag] = system_tag
-      Souffle::Log.info "[#{system_tag}] #{nodes}"
       @lbs.create_lb(lb, nodes, vips)
       @system.nodes.each do |n|
         node_ip = n.options[:node_ip]
