@@ -137,9 +137,9 @@ class Souffle::Provisioner::System
       @lbs.create_lb(lb, nodes, vips)
       @system.nodes.each do |n|
         if n.run_list.include? lb[:role]
-          node_ip = node.options[:node_ip]
+          node_ip = n.options[:node_ip]
           lb_ip = @lbs.get_lb_ip(lb[:name])
-          node_name = node.name
+          node_name = n.name
           n.options[:attributes].merge!(JSON.parse(ERB.new(lb[:attrs_erb].to_json).result(binding)))
           Souffle::Log.info "[#{system_tag}] Node attrs: #{n.options[:attributes]}"
         end
