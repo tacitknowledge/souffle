@@ -82,6 +82,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
     node.options[:rackspace_instance_id] = instance_info.id
     node.options[:node_password] = instance_info.password
     node.options[:node_name] = [node.name, node.domain].compact.join('.')
+    node.options[:node_ip] = instance_info.addresses["private"].first["addr"]
     wait_until_node_running(node) { node.provisioner.created }
   end
 
