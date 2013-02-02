@@ -18,7 +18,6 @@ class Souffle::LoadBalancer::Rackspace < Souffle::LoadBalancer::Base
   
   def create_lb(lb, nodes, vips)
     initialize if @lbs.nil?
-    load_balancer = @lbs
     lb_nodes = []
     nodes.each do |n|
       node = n.provisioner.provider.get_server(n)
@@ -30,33 +29,33 @@ class Souffle::LoadBalancer::Rackspace < Souffle::LoadBalancer::Base
     #nodes = [ {"address" => "10.176.98.127", "port" => 80, "condition" => "ENABLED"}]
 
     Souffle::Log.info "#{lb[:system_tag]} Adding Load Balanacer Name: #{lb[:name]} Nodes: #{lb_nodes} Vips #{vips} "
-    load_balancer.create_load_balancer(lb[:name], "HTTP", lb[:lb_port], vips, lb_nodes)
+    @lbs.create_load_balancer(lb[:name], "HTTP", lb[:lb_port], vips, lb_nodes)
     wait_for_lb(lb[:name])
-    load_balancer.create_access_rule(get_lb_id(lb[:name]), "0.0.0.0/0", "DENY")
+    @lbs.create_access_rule(get_lb_id(lb[:name]), "0.0.0.0/0", "DENY")
     wait_for_lb(lb[:name])
-    load_balancer.set_monitor(get_lb_id(lb[:name]),"CONNECT",10,5,2)
+    @lbs.set_monitor(get_lb_id(lb[:name]),"CONNECT",10,5,2)
     wait_for_lb(lb[:name])
-    load_balancer.update_load_balancer(get_lb_id(lb[:name]), :algorithm => "LEAST_CONNECTIONS")
+    @lbs.update_load_balancer(get_lb_id(lb[:name]), :algorithm => "LEAST_CONNECTIONS")
   end
   
   def get_lb_ip(name)
     initialize if @lbs.nil?
-    lb = @lbs.load_balancers.select { |lb| lb.name = name }
+    lb = @lbs.load_balancers.select { |lb| lb.name == name }
     lb.first.virtual_ips.first.address
   end
   
   def get_lb_id(name)
     initialize if @lbs.nil?
-    lb = @lbs.load_balancers.select { |lb| lb.name = name }
+    lb = @lbs.load_balancers.select { |lb| lb.name == name }
     lb.first.id
   end
   
   def wait_for_lb(name)
     initialize if @lbs.nil?
-    lb =  @lbs.load_balancers.select { |lb| lb.name = name }
+    lb =  @lbs.load_balancers.select { |lb| lb.name == name }
     until(lb.first.state == "ACTIVE")
       sleep 5
-      lb =  @lbs.load_balancers.select { |lb| lb.name = name }
+      lb =  @lbs.load_balancers.select { |lb| lb.name == name }
     end
   end
   
