@@ -18,6 +18,7 @@ class Souffle::LoadBalancer::Rackspace < Souffle::LoadBalancer::Base
   
   def create_lb(lb, nodes, vips)
     initialize if @lbs.nil?
+    load_balancer = @lbs
     lb_nodes = []
     nodes.each do |n|
       node = n.provisioner.provider.get_server(n)
@@ -29,7 +30,7 @@ class Souffle::LoadBalancer::Rackspace < Souffle::LoadBalancer::Base
     #nodes = [ {"address" => "10.176.98.127", "port" => 80, "condition" => "ENABLED"}]
 
     Souffle::Log.info "#{lb[:system_tag]} Adding Load Balanacer Name: #{lb[:name]} Nodes: #{lb_nodes} Vips #{vips} "
-    load_balancer = @lbs.create_load_balancer(lb[:name], "HTTP", lb[:lb_port], vips, lb_nodes)
+    load_balancer.create_load_balancer(lb[:name], "HTTP", lb[:lb_port], vips, lb_nodes)
     wait_for_lb(lb[:name])
     load_balancer.create_access_rule(get_lb_id(lb[:name]), "0.0.0.0/0", "DENY")
     wait_for_lb(lb[:name])
