@@ -59,10 +59,10 @@ class Souffle::LoadBalancer::Rackspace < Souffle::LoadBalancer::Base
     end
   end
   
-  def setup_lb_dns(dns_provider, name, domain)
+  def setup_lb_dns(dns_provider, name, domain, tag=nil)
     unless dns_provider.nil?
       @dns = Souffle::DNS.plugin(@system.try_opt(:dns_provider)).new
-      @dns.create_entry_by_name(name, domain, get_lb_ip(name))
+      @dns.create_entry_by_name(name, domain, get_lb_ip(name), tag)
     end
   end
   

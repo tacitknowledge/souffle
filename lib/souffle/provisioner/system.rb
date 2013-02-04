@@ -144,7 +144,7 @@ class Souffle::Provisioner::System
           Souffle::Log.info "[#{system_tag}] Node attrs: #{n.options[:attributes]}"
         end
       end
-      @lbs.setup_lb_dns(@system.try_opt(:dns_provider), lb[:name], @system.try_opt(:domain))
+      @lbs.setup_lb_dns(@system.try_opt(:dns_provider), lb[:name], @system.try_opt(:domain), lb[:system_tag])
     end
     load_balanced
   end
