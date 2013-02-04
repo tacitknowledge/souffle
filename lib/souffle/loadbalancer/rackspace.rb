@@ -30,32 +30,35 @@ class Souffle::LoadBalancer::Rackspace < Souffle::LoadBalancer::Base
 
     Souffle::Log.info "#{lb[:system_tag]} Adding Load Balanacer Name: #{lb[:name]} Nodes: #{lb_nodes} Vips #{vips} "
     @lbs.create_load_balancer(lb[:name], "HTTP", lb[:lb_port], vips, lb_nodes)
-    wait_for_lb(lb[:name])
-    @lbs.create_access_rule(get_lb_id(lb[:name]), "0.0.0.0/0", "DENY")
+    unless lb[:access_rules].nil?
+      lb[:access_rules].each do |rule|
+        create_access_rule(lb[:name], rule[:address], rule[:action])
+      end
+    end
     wait_for_lb(lb[:name])
     @lbs.set_monitor(get_lb_id(lb[:name]),"CONNECT",10,5,2)
     wait_for_lb(lb[:name])
     @lbs.update_load_balancer(get_lb_id(lb[:name]), :algorithm => "LEAST_CONNECTIONS")
   end
-  
-  def get_lb_ip(name)
+  def get_lb(name)
     initialize if @lbs.nil?
     lb = @lbs.load_balancers.select { |lb| lb.name == name }
+  end
+  def get_lb_ip(name)
+    lb = get_lb(name)
     lb.first.virtual_ips.first.address
   end
   
   def get_lb_id(name)
-    initialize if @lbs.nil?
-    lb = @lbs.load_balancers.select { |lb| lb.name == name }
+    lb = get_lb(name)
     lb.first.id
   end
   
   def wait_for_lb(name)
-    initialize if @lbs.nil?
-    lb =  @lbs.load_balancers.select { |lb| lb.name == name }
+    lb = get_lb(name)
     until(lb.first.state == "ACTIVE")
       sleep 5
-      lb =  @lbs.load_balancers.select { |lb| lb.name == name }
+      lb = get_lb(name)
     end
   end
   
@@ -66,4 +69,10 @@ class Souffle::LoadBalancer::Rackspace < Souffle::LoadBalancer::Base
     end
   end
   
+  def create_access_rule(name, address, action)
+    initialize if @lbs.nil?
+    wait_for_lb(name)
+    @lbs.create_access_rule(get_lb_id(name), address, action)
+  end
+    
 end

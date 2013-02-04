@@ -122,29 +122,31 @@ class Souffle::Provisioner::System
   
   # Creates the system load balancers
   def load_balance
-    @lbs = Souffle::LoadBalancer.plugin(@system.try_opt(:load_balancer_provider)).new
-    Souffle::Log.info "[#{system_tag}] Creating load balancers..."
-    @system.try_opt(:load_balancers).each do |lb|
-      Souffle::Log.info "[#{system_tag}] Creating load balancer #{lb[:name]}..."
-      nodes = []
-      @system.nodes.each do |n|
-        if n.run_list.include? lb[:role]
-          nodes << n
+    unless @system.try_opt(:load_balancers).nil?
+      @lbs = Souffle::LoadBalancer.plugin(@system.try_opt(:load_balancer_provider)).new
+      Souffle::Log.info "[#{system_tag}] Creating load balancers..."
+      @system.try_opt(:load_balancers).each do |lb|
+        Souffle::Log.info "[#{system_tag}] Creating load balancer #{lb[:name]}..."
+        nodes = []
+        @system.nodes.each do |n|
+          if n.run_list.include? lb[:role]
+            nodes << n
+          end
         end
-      end
-      vips = lb[:vips]
-      lb[:system_tag] = system_tag
-      @lbs.create_lb(lb, nodes, vips)
-      @system.nodes.each do |n|
-        unless(lb[:attrs_erb].nil?)
-          node_ip = n.options[:node_ip]
-          lb_ip = @lbs.get_lb_ip(lb[:name])
-          node_name = n.name
-          n.options[:attributes].merge!(JSON.parse(ERB.new(lb[:attrs_erb].to_json).result(binding)))
-          Souffle::Log.info "[#{system_tag}] Node attrs: #{n.options[:attributes]}"
+        vips = lb[:vips]
+        lb[:system_tag] = system_tag
+        @lbs.create_lb(lb, nodes, vips)
+        @system.nodes.each do |n|
+          unless(lb[:attrs_erb].nil?)
+            node_ip = n.options[:node_ip]
+            lb_ip = @lbs.get_lb_ip(lb[:name])
+            node_name = n.name
+            n.options[:attributes].merge!(JSON.parse(ERB.new(lb[:attrs_erb].to_json).result(binding)))
+            Souffle::Log.info "[#{system_tag}] Node attrs: #{n.options[:attributes]}"
+          end
         end
+        @lbs.setup_lb_dns(@system.try_opt(:dns_provider), lb[:name], @system.try_opt(:domain), lb[:system_tag])
       end
-      @lbs.setup_lb_dns(@system.try_opt(:dns_provider), lb[:name], @system.try_opt(:domain), lb[:system_tag])
     end
     load_balanced
   end
