@@ -40,10 +40,12 @@ class Souffle::LoadBalancer::Rackspace < Souffle::LoadBalancer::Base
     wait_for_lb(lb[:name])
     @lbs.update_load_balancer(get_lb_id(lb[:name]), :algorithm => "LEAST_CONNECTIONS")
   end
+  
   def get_lb(name)
     initialize if @lbs.nil?
     lb = @lbs.load_balancers.select { |lb| lb.name == name }
   end
+  
   def get_lb_ip(name)
     lb = get_lb(name)
     lb.first.virtual_ips.first.address
