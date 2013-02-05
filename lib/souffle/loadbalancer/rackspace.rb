@@ -32,6 +32,7 @@ class Souffle::LoadBalancer::Rackspace < Souffle::LoadBalancer::Base
     @lbs.create_load_balancer(lb[:name], "HTTP", lb[:lb_port], vips, lb_nodes)
     unless lb[:access_rules].nil?
       lb[:access_rules].each do |rule|
+        Souffle::Log.info "#{lb[:system_tag]} Adding access rule for #{lb[:name]}. Address: #{rule[:address]} Action: #{rule[:action]}"
         create_access_rule(lb[:name], rule[:address], rule[:action])
       end
     end
