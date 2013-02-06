@@ -167,7 +167,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
 
       event_loop do
         instance = @provider.get_server(node)
-        node.provisioner.error_occurred if (instance.nil? || instance.state.nil?)
+        node.provisioner.error_occurred if instance.nil?
         if instance.state.downcase == "active"
           event_complete
           @blk.call unless @blk.nil?
