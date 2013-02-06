@@ -145,15 +145,27 @@ module Souffle::Provider
     # @option opts [ Boolean ] :reconnect When disconnected reconnect.
     #
     # @yield [ EventMachine::Ssh::Session ] The ssh session.
-    def ssh_block(address, user="root", pass=nil, opts={})
+    def ssh_block(address, user="root", pass=nil, opts={}, attempt=0)
+      max_attempts = 3
       opts[:password] = pass unless pass.nil?
       opts[:paranoid] = false
-      EM::Ssh.start(address, user, opts) do |connection|
-        connection.errback do |err|
-          Souffle::Log.info "SSH_BLOCK USER #{user} PASS #{pass} IP #{address} OPTS #{opts}"
-          Souffle::Log.error "#{opts} SSH Error: #{err} (#{err.class}) "
+      connected = false
+      until(connected)
+        if(attempt == max_attempts)
+          Souffle::Log.error "[#{node.tag}] System Creation Failure."
+          @system.nodes.each do |n|
+            n.system.provisioner.creation_halted
+          end
         end
-        connection.callback { |ssh| yield(ssh) if block_given?; ssh.close }
+        EM::Ssh.start(address, user, opts) do |connection|
+          connection.errback do |err|
+            Souffle::Log.info "#{opts} Failed attempt to ssh: #{attempt}"
+            Souffle::Log.info "SSH_BLOCK USER #{user} PASS #{pass} IP #{address} OPTS #{opts}"
+            Souffle::Log.error "#{opts} SSH Error: #{err} (#{err.class}) "
+            attempt+=1
+          end
+          connection.callback { |ssh| yield(ssh) if block_given?; ssh.close; connected=true }
+        end
       end
     end
 
