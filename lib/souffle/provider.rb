@@ -151,18 +151,19 @@ module Souffle::Provider
       opts[:paranoid] = false
       connected = false
       until(connected)
-        if(attempt == max_attempts)
-          Souffle::Log.error "[#{node.tag}] System Creation Failure."
-          @system.nodes.each do |n|
-            n.system.provisioner.creation_halted
-          end
-        end
         EM::Ssh.start(address, user, opts) do |connection|
           connection.errback do |err|
             Souffle::Log.info "#{opts} Failed attempt to ssh: #{attempt}"
             Souffle::Log.info "SSH_BLOCK USER #{user} PASS #{pass} IP #{address} OPTS #{opts}"
             Souffle::Log.error "#{opts} SSH Error: #{err} (#{err.class}) "
+            if(attempt == max_attempts)
+              Souffle::Log.error "[#{node.tag}] System Creation Failure."
+              @system.nodes.each do |n|
+                n.system.provisioner.creation_halted
+              end
+            end
             attempt+=1
+            sleep 10
           end
           connection.callback { |ssh| yield(ssh) if block_given?; ssh.close; connected=true }
         end
