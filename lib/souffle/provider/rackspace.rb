@@ -251,6 +251,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
               event_complete
               if node.try_opt(:rack_connect)
                 @provider.wait_for_rackconnect(node)
+                @provider.wait_for_managed_services(node)
               else
                 node.provisioner.booted
               end
@@ -309,6 +310,50 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
       error_handler do
         Souffle::Log.error "#{node.log_prefix} Rackconnect timeout..."
         @provider.wait_for_rackconnect(node, iteration+1)
+      end
+    end
+  end
+  
+  def wait_for_managed_services(node, iteration=0)
+    max_iterations = 5
+    return node.provisioner.error_occurred if iteration == max_iterations
+
+    rackconnect_test = "curl -s -S https://ord.api.rackconnect.rackspace.com/v1/automation_status?format=JSON"
+    
+    Souffle::PollingEvent.new(node) do
+      timeout 400
+      interval 30
+
+      pre_event do
+        Souffle::Log.info "#{node.log_prefix} Waiting for rackconnect... (#{iteration+1}/#{max_iterations})"
+        @provider = node.provisioner.provider
+      end
+
+      event_loop do
+        n = @provider.get_server(node)
+        unless n.nil?
+          status = n.metadata["rax_service_level_automation"]
+          if (status.to_s =~ /complete/i)
+            Souffle::Log.info "#{node.log_prefix} Managed Services Deployed."
+            event_complete
+            node.provisioner.booted
+          elsif (status.to_s =~ /error/i)
+            Souffle::Log.error "#{node.log_prefix} Managed Service Failed: #{status}."
+            event_complete
+            node.provisioner.error_occurred
+          elsif (status.to_s.nil?)
+            if(iteration > 1)
+              Souffle::Log.error "#{node.log_prefix} No Rackconnect Status."
+              event_complete
+              node.provisioner.error_occurred
+            end
+          end
+        end
+      end
+
+      error_handler do
+        Souffle::Log.error "#{node.log_prefix} Rackconnect timeout..."
+        @provider.wait_for_managed_services(node, iteration+1)
       end
     end
   end
