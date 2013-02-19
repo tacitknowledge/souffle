@@ -156,16 +156,19 @@ module Souffle::Provider
             Souffle::Log.info "#{opts} Failed attempt to ssh: #{attempt}"
             Souffle::Log.info "SSH_BLOCK USER #{user} PASS #{pass} IP #{address} OPTS #{opts}"
             Souffle::Log.error "#{opts} SSH Error: #{err} (#{err.class}) "
-            if(attempt == max_attempts)
-              Souffle::Log.error "[#{node.tag}] System Creation Failure."
-              @system.nodes.each do |n|
-                n.system.provisioner.creation_halted
-              end
+            if(attempt >= max_attempts)
+              connected=true
             end
             attempt+=1
             sleep 10
           end
           connection.callback { |ssh| yield(ssh) if block_given?; ssh.close; connected=true }
+        end
+      end
+      if(attempt >= max_attempts)
+        Souffle::Log.error "[#{node.tag}] System Creation Failure."
+        @system.nodes.each do |n|
+          n.system.provisioner.creation_halted
         end
       end
     end
