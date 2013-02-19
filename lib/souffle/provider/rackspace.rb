@@ -247,7 +247,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
           EM::Ssh.start(address, user, opts) do |connection|
             connection.errback  { |err| nil }
             connection.callback do |ssh|
-              ssh.exec!("touch /root/.noupdate")
+              #ssh.exec!("touch /root/.noupdate")
               event_complete
               if node.try_opt(:rack_connect)
                 @provider.wait_for_rackconnect(node)
