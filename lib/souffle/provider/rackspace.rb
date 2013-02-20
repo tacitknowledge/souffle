@@ -342,7 +342,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
             node.provisioner.error_occurred
           elsif (status.to_s.nil?)
             if(iteration > 1)
-              Souffle::Log.error "#{node.log_prefix} No Rackconnect Status."
+              Souffle::Log.error "#{node.log_prefix} No Managed Services Status."
               event_complete
               node.provisioner.error_occurred
             end
@@ -351,7 +351,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
       end
 
       error_handler do
-        Souffle::Log.error "#{node.log_prefix} Rackconnect timeout..."
+        Souffle::Log.error "#{node.log_prefix} Managed Services timeout..."
         @provider.wait_for_managed_services(node, iteration+1)
       end
     end
@@ -400,6 +400,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
       ssh.exec!("echo \"#{client_config}\" >> /etc/chef/client.rb")
       ssh.exec!("echo \"#{validation_pem}\" >> /etc/chef/validation.pem")
       ssh.exec!("curl -L https://www.opscode.com/chef/install.sh | bash -s -- -v 10.14.4")
+      ssh.exec!("yum clean all")
       stdout = ssh.exec!("#{client_cmds} ; echo $?")
       status = stdout.split("\n").last
       if status != "0"

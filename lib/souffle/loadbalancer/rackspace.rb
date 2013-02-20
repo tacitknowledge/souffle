@@ -28,7 +28,7 @@ class Souffle::LoadBalancer::Rackspace < Souffle::LoadBalancer::Base
     #vips = [ {"type" => "PUBLIC"}]
     #nodes = [ {"address" => "10.176.98.127", "port" => 80, "condition" => "ENABLED"}]
 
-    Souffle::Log.info "#{lb[:system_tag]} Adding Load Balanacer Name: #{lb[:name]} Nodes: #{lb_nodes} Vips #{vips} "
+    Souffle::Log.info "#{lb[:system_tag]} Adding Load Balancer Name: #{lb[:name]} Nodes: #{lb_nodes} Vips #{vips} "
     @lbs.create_load_balancer(lb[:name], "HTTP", lb[:lb_port], vips, lb_nodes)
     unless lb[:access_rules].nil?
       lb[:access_rules].each do |rule|
