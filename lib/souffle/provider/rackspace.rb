@@ -247,7 +247,9 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
           EM::Ssh.start(address, user, opts) do |connection|
             connection.errback  { |err| nil }
             connection.callback do |ssh|
-              #ssh.exec!("touch /root/.noupdate")
+              if node.try_opt(:managed_services) == "noupdate"
+                ssh.exec!("touch /root/.noupdate")
+              end
               event_complete
               if node.try_opt(:rack_connect)
                 @provider.wait_for_rackconnect(node)
@@ -291,7 +293,11 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
           if (status.to_s =~ /deployed/i)
             Souffle::Log.info "#{node.log_prefix} Rackconnect Deployed."
             event_complete
-            @provider.wait_for_managed_services(node)
+            unless node.try_opt(:manged_services).nil?
+              @provider.wait_for_managed_services(node)
+            else
+              node.provisioner.booted
+            end
           elsif (status.to_s =~ /failed/i)
             Souffle::Log.error "#{node.log_prefix} Rackconnect Failed."
             event_complete
