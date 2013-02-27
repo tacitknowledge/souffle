@@ -94,7 +94,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
       begin
         @rackspace.delete_server(n.options[:rackspace_instance_id])
       rescue Fog::Compute::RackspaceV2::NotFound => e
-        Souffle::Log.error "#{node.log_prefix} #{e} - #{node.name} does not exist..."
+        Souffle::Log.error "#{n.log_prefix} #{e} - #{n.name} does not exist..."
       end
     end
   end
