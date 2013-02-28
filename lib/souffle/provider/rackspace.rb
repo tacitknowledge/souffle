@@ -154,7 +154,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
   # @param [ Souffle::Node ] node The node to wait until running on.
   # @param [ Fixnum ] poll_timeout The maximum number of seconds to wait.
   # @param [ Fixnum ] poll_interval The interval in seconds to poll EC2.
-  def wait_until_node_running(node, poll_timeout=600, poll_interval=30, &blk)
+  def wait_until_node_running(node, poll_timeout=900, poll_interval=30, &blk)
     rackspace = @rackspace; Souffle::PollingEvent.new(node) do
       timeout poll_timeout
       interval poll_interval
