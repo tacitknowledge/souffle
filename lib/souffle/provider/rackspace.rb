@@ -219,7 +219,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
   # 
   # @yield [ Eventmachine::Ssh:Session ] The ssh session.
   def wait_for_boot(node, user="root", pass=nil, opts={},
-                    poll_timeout=200, iteration=0, &blk)
+                    poll_timeout=300, iteration=0, &blk)
     return node.provisioner.error_occurred if iteration == 3
 
     rackspace=@rackspace
