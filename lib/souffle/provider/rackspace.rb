@@ -409,6 +409,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
       ssh.exec!("echo \"#{validation_pem}\" >> /etc/chef/validation.pem")
       ssh.exec!("curl -L https://www.opscode.com/chef/install.sh | bash -s -- -v 10.14.4")
       ssh.exec!("yum clean all")
+      ssh.exec!("yum install ruby -y")
       stdout = ssh.exec!("#{client_cmds} ; echo $?")
       status = stdout.split("\n").last
       if status != "0"
@@ -532,11 +533,12 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
   # 
   # @yield [ EventMachine::Ssh::Session ] The ssh session.
   def ssh_block(node, user="root", pass=nil, opts={}, attempt=0)
-   n = get_server(node)
+    n = get_server(node)
     if n.nil?
       raise RackspaceInstanceDoesNotExist,
         "The Rackspace instance (#{node.options[:rackspace_instance_id]}) does not exist."
     else
+      Souffle::Log.info "node: #{n}"
       address = n.addresses["private"].first["addr"]
       max_attempts = 3
       pass = node.options[:node_password] if pass.nil?
