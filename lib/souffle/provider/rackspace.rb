@@ -539,7 +539,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
     else
       address = n.addresses["private"].first["addr"]
       max_attempts = 3
-      pass = n.addresses["private"].first["addr"] if pass.nil?
+      pass = node.options[:node_password] if pass.nil?
       opts[:password] = pass unless pass.nil?
       opts[:paranoid] = false
       success = false
