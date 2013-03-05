@@ -93,7 +93,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
       Souffle::Log.info "#{n.log_prefix} Killing #{n}"
       begin
         @rackspace.delete_server(n.options[:rackspace_instance_id])
-      rescue Fog::Compute::RackspaceV2::NotFound => e
+      rescue Fog::Compute::RackspaceV2::NotFound, Fog::Compute::RackspaceV2::ServiceError => e
         Souffle::Log.error "#{n.log_prefix} #{e} - #{n.name} does not exist..."
       end
     end
@@ -168,14 +168,16 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
       event_loop do
         instance = @provider.get_server(node)
         node.provisioner.error_occurred if instance.nil?
-        if instance.state.downcase == "active"
-          event_complete
-          @blk.call unless @blk.nil?
-        elsif instance.state.downcase == "error"
-          event_complete
-          error_msg = "#{node.log_prefix} Error on Node Boot..."
-          Souffle::Log.error error_msg
-          node.provisioner.error_occurred
+        unless instance.nil?
+          if instance.state.downcase == "active"
+            event_complete
+            @blk.call unless @blk.nil?
+          elsif instance.state.downcase == "error"
+            event_complete
+            error_msg = "#{node.log_prefix} Error on Node Boot..."
+            Souffle::Log.error error_msg
+            node.provisioner.error_occurred
+          end
         end
       end
 
