@@ -537,7 +537,9 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
       raise RackspaceInstanceDoesNotExist,
         "The Rackspace instance (#{node.options[:rackspace_instance_id]}) does not exist."
     else
+      address = n.addresses["private"].first["addr"]
       max_attempts = 3
+      pass = n.addresses["private"].first["addr"] if pass.nil?
       opts[:password] = pass unless pass.nil?
       opts[:paranoid] = false
       success = false
