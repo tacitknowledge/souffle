@@ -543,7 +543,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
       opts[:password] = pass unless pass.nil?
       opts[:system_tag] = "#{node.log_prefix}"
       Souffle::Log.info "#{node.log_prefix} USER #{user} PASS #{pass} IP #{n.addresses["private"].first["addr"]} OPTS #{opts}"
-      super(n.addresses["private"].first["addr"], user, pass, opts)
+      super(n.addresses["private"].first["addr"], user, pass, opts, 0)
     end
   end
   
