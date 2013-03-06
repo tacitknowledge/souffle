@@ -148,6 +148,7 @@ module Souffle::Provider
     def ssh_block(address, user="root", pass=nil, opts={})
       opts[:password] = pass unless pass.nil?
       opts[:paranoid] = false
+      opts[:reconnect] = true
       EM::Ssh.start(address, user, opts) do |connection|
         connection.errback do |err|
           Souffle::Log.info "SSH_BLOCK USER #{user} PASS #{pass} IP #{address} OPTS #{opts}"
