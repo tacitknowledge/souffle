@@ -533,6 +533,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
   # 
   # @yield [ EventMachine::Ssh::Session ] The ssh session.
   def ssh_block(node, user="root", pass=nil, opts={}, attempt=0)
+    max_attempts = 3
     n = get_server(node)
     if n.nil?
       raise RackspaceInstanceDoesNotExist,
@@ -540,14 +541,13 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
     else
       Souffle::Log.info "node: #{n}"
       address = n.addresses["private"].first["addr"]
-      max_attempts = 3
       pass = node.options[:node_password] if pass.nil?
       opts[:password] = pass unless pass.nil?
       opts[:paranoid] = false
       success = false
       EM::Ssh.start(address, user, opts) do |connection|
         connection.errback do |err|
-          Souffle::Log.info "SSH_BLOCK USER #{user} PASS #{pass} IP #{address} OPTS #{opts}"
+          Souffle::Log.info "SSH_BLOCK USER #{user} PASS #{pass} IP #{address} OPTS #{opts} ATTEMPT #{attempt}"
           Souffle::Log.error "#{opts} SSH Error: #{err} (#{err.class}) "
         end
         connection.callback { |ssh| yield(ssh) if block_given?; success = true; ssh.close }
@@ -555,6 +555,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
       unless success
         if attempt <= max_attempts
           sleep 10
+          Souffle::Log.error "Try ssh again... ATTEMPT #{attempt}"
           node.provisioner.provider.ssh_block(node, user, pass, opts, attempt+1)
         else
           @system.nodes.each do |n|
