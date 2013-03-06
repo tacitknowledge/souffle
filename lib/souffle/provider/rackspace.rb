@@ -93,7 +93,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
       Souffle::Log.info "#{n.log_prefix} Killing #{n}"
       begin
         @rackspace.delete_server(n.options[:rackspace_instance_id])
-      rescue Fog::Compute::RackspaceV2::NotFound, Fog::Compute::RackspaceV2::ServiceError => e
+      rescue Fog::Compute::RackspaceV2::NotFound => e
         Souffle::Log.error "#{n.log_prefix} #{e} - #{n.name} does not exist..."
       end
     end
@@ -532,38 +532,19 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
   # @option opts [ Boolean ] :reconnect When disconnected reconnect.
   # 
   # @yield [ EventMachine::Ssh::Session ] The ssh session.
-  def ssh_block(node, user="root", pass=nil, opts={}, attempt=0)
-    max_attempts = 3
-    n = get_server(node)
+  def ssh_block(node, user="root", pass=nil, opts={})
+   n = get_server(node)
     if n.nil?
       raise RackspaceInstanceDoesNotExist,
         "The Rackspace instance (#{node.options[:rackspace_instance_id]}) does not exist."
     else
-      Souffle::Log.info "node: #{n}"
-      address = n.addresses["private"].first["addr"]
-      pass = node.options[:node_password] if pass.nil?
+      if pass.nil?
+        pass = node.options[:node_password]
+      end
       opts[:password] = pass unless pass.nil?
-      opts[:paranoid] = false
-      success = false
-      EM::Ssh.start(address, user, opts) do |connection|
-        connection.errback do |err|
-          Souffle::Log.info "SSH_BLOCK USER #{user} PASS #{pass} IP #{address} OPTS #{opts} ATTEMPT #{attempt}"
-          Souffle::Log.error "#{opts} SSH Error: #{err} (#{err.class}) "
-        end
-        connection.callback { |ssh| yield(ssh) if block_given?; success = true; ssh.close }
-      end
-      unless success
-        if attempt <= max_attempts
-          sleep 10
-          Souffle::Log.error "Try ssh again... ATTEMPT #{attempt}"
-          node.provisioner.provider.ssh_block(node, user, pass, opts, attempt+1)
-        else
-          @system.nodes.each do |n|
-            Souffle::Log.error "[#{node.tag}] System Creation Failure."
-            n.system.provisioner.creation_halted
-          end
-        end
-      end
+      opts[:system_tag] = "#{node.log_prefix}"
+      Souffle::Log.info "#{node.log_prefix} USER #{user} PASS #{pass} IP #{n.addresses["private"].first["addr"]} OPTS #{opts}"
+      super(n.addresses["private"].first["addr"], user, pass, opts)
     end
   end
   
