@@ -533,7 +533,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
   # 
   # @yield [ EventMachine::Ssh::Session ] The ssh session.
   def ssh_block(node, user="root", pass=nil, opts={})
-   n = get_server(node)
+    n = get_server(node)
     if n.nil?
       raise RackspaceInstanceDoesNotExist,
         "The Rackspace instance (#{node.options[:rackspace_instance_id]}) does not exist."
