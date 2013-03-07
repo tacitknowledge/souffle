@@ -341,7 +341,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
         unless n.nil?
           status = n.metadata["rax_service_level_automation"]
           if (status.to_s =~ /complete/i)
-            Souffle::Log.info "#{node.log_prefix} Managed Services Deployed."
+            Souffle::Log.info "#{node.log_prefix} Managed Services Deployed. #{n.metadata}"
             event_complete
             node.provisioner.booted
           elsif (status.to_s =~ /error/i)
