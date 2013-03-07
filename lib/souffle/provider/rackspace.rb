@@ -249,7 +249,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
           EM::Ssh.start(address, user, opts) do |connection|
             connection.errback  { |err| nil }
             connection.callback do |ssh|
-              if node.try_opt(:managed_services) == "noupdate"
+              if @system.try_opt(:managed_services) == "noupdate"
                 ssh.exec!("touch /root/.noupdate")
               end
               event_complete
@@ -294,8 +294,8 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
           status = n.metadata["rackconnect_automation_status"]
           if (status.to_s =~ /deployed/i)
             Souffle::Log.info "#{node.log_prefix} Rackconnect Deployed."
-            Souffle::Log.info "#{node.log_prefix} #{node.try_opt(:manged_services)}"
-            unless node.try_opt(:manged_services).nil?
+            Souffle::Log.info "#{node.log_prefix} #{@system.try_opt(:manged_services)}"
+            unless @system.try_opt(:manged_services).nil?
               @provider.wait_for_managed_services(node)
             else
               node.provisioner.booted
