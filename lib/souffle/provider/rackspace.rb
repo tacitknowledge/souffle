@@ -294,7 +294,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
           status = n.metadata["rackconnect_automation_status"]
           if (status.to_s =~ /deployed/i)
             Souffle::Log.info "#{node.log_prefix} Rackconnect Deployed."
-            Souffle::Log.info "#{node.log_prefix} #{@system.try_opt(:managed_services)}"
+            Souffle::Log.info "#{node.log_prefix} #{node.try_opt(:managed_services)}"
             unless node.try_opt(:managed_services).nil?
               @provider.wait_for_managed_services(node)
             else
