@@ -153,7 +153,7 @@ module Souffle::Provider
         connection.errback do |err|
           Souffle::Log.info "SSH_BLOCK USER #{user} PASS #{pass} IP #{address} OPTS #{opts}"
           Souffle::Log.error "#{opts} SSH Error: #{err} (#{err.class}) "
-          Souffle::Log.error "[#{n.tag}] System Creation Failure."
+          Souffle::Log.error "#{opts} System Creation Failure."
           @system.nodes.each do |n|
             n.system.provisioner.creation_halted
           end
