@@ -146,16 +146,24 @@ module Souffle::Provider
     #
     # @yield [ EventMachine::Ssh::Session ] The ssh session.
     def ssh_block(address, user="root", pass=nil, opts={})
+      max_attempts = 3
       opts[:password] = pass unless pass.nil?
       opts[:paranoid] = false
       opts[:reconnect] = true
+      opts[:attempt] = 0 if opts[:attempt].nil?
       EM::Ssh.start(address, user, opts) do |connection|
         connection.errback do |err|
           Souffle::Log.info "SSH_BLOCK USER #{user} PASS #{pass} IP #{address} OPTS #{opts}"
           Souffle::Log.error "#{opts} SSH Error: #{err} (#{err.class}) "
-          @system.nodes.each do |n|
-            Souffle::Log.error "[#{n.tag}] System Creation Failure."
-            n.system.provisioner.creation_halted
+          if opt[:attempt] > max_attempts
+            Souffle::Log.error "[#{opts}] System Creation Failure."
+            @system.nodes.each do |n|
+              n.system.provisioner.creation_halted
+            end
+          else
+            opts[:attempt]+=1
+            sleep 10
+            ssh_block(address, user, pass, opts)
           end
         end
         connection.callback { |ssh| yield(ssh) if block_given?; ssh.close }
