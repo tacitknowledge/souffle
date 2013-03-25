@@ -407,7 +407,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
       ssh.exec!("mkdir /etc/chef")
       ssh.exec!("echo \"#{client_config}\" >> /etc/chef/client.rb")
       ssh.exec!("echo \"#{validation_pem}\" >> /etc/chef/validation.pem")
-      ssh.exec!("curl -L https://www.opscode.com/chef/install.sh | bash -s -- -v 10.14.4")
+      ssh.exec!("curl -L https://www.opscode.com/chef/install.sh | bash -s -- -v 10.18.2")
       ssh.exec!("yum clean all")
       ssh.exec!("yum install ruby -y")
       stdout = ssh.exec!("#{client_cmds} ; echo $?")
