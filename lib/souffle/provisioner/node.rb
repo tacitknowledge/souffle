@@ -159,7 +159,7 @@ class Souffle::Provisioner::Node
     Souffle::Log.info "#{@node.log_prefix} Handling node error..."
     if @failures >= @max_failures
       Souffle::Log.error "[#{@node.log_prefix}] Complete failure. Halting Creation."
-      @node.system.creation_halted
+      @node.system.provisioner.creation_halted
     else
       err_msg =  "[#{@node.log_prefix}] Error creating node. "
       err_msg << "Killing and recreating..."
