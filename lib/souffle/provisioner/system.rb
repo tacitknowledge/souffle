@@ -137,7 +137,7 @@ class Souffle::Provisioner::System
         lb[:system_tag] = system_tag
         @lbs.create_lb(lb, nodes, vips)
         @system.nodes.each do |n|
-          unless(lb[:attrs_erb].nil?)
+          unless lb[:attrs_erb].nil?
             node_ip = n.options[:node_ip]
             lb_ip = @lbs.get_lb_ip(lb[:name])
             node_name = n.name
@@ -146,6 +146,9 @@ class Souffle::Provisioner::System
           end
         end
         @lbs.setup_lb_dns(@system.try_opt(:dns_provider), lb[:name], @system.try_opt(:domain), lb[:system_tag])
+        unless lb[:ssl].nil?
+          @lbs.set_ssl_termination(lb[:name], "443", lb[:ssl][:key], lb[:ssl][:cert], lb[:ssl][:intermediate_cert]) unless (lb[:ssl][:key].nil? || lb[:ssl][:cert].nil?)
+        end
       end
     end
     load_balanced
