@@ -31,12 +31,12 @@ class Souffle::LoadBalancer::Rackspace < Souffle::LoadBalancer::Base
     Souffle::Log.info "#{lb[:system_tag]} Adding Load Balancer Name: #{lb[:name]} Nodes: #{lb_nodes} Vips #{vips} "
     @lbs.create_load_balancer(lb[:name], "HTTP", lb[:lb_port], vips, lb_nodes)
     unless lb[:access_rules].nil?
-      # lb[:access_rules].each do |rule|
-      #   Souffle::Log.info "#{lb[:system_tag]} Adding access rule for #{lb[:name]}. Address: #{rule[:address]} Action: #{rule[:action]}"
-      #   create_access_rule(lb[:name], rule[:address], rule[:action])
-      # end
-      Souffle::Log.info "#{lb[:system_tag]} Adding access rules for #{lb[:name]}. Rules: #{lb[:access_rules]}"
-      create_access_rules(lb[:name], lb[:access_rules])
+      lb[:access_rules].each do |rule|
+        Souffle::Log.info "#{lb[:system_tag]} Adding access rule for #{lb[:name]}. Address: #{rule[:address]} Action: #{rule[:action]}"
+        create_access_rule(lb[:name], rule[:address], rule[:action])
+      end
+      #Souffle::Log.info "#{lb[:system_tag]} Adding access rules for #{lb[:name]}. Rules: #{lb[:access_rules]}"
+      #create_access_rules(lb[:name], lb[:access_rules])
     end
     wait_for_lb(lb[:name])
     @lbs.set_monitor(get_lb_id(lb[:name]),"CONNECT",10,5,2)
