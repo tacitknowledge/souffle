@@ -147,7 +147,8 @@ class Souffle::Provisioner::System
         end
         @lbs.setup_lb_dns(@system.try_opt(:dns_provider), lb[:name], @system.try_opt(:domain), lb[:system_tag])
         unless lb[:ssl].nil?
-          @lbs.set_ssl_termination(lb[:name], "443", lb[:ssl][:key], lb[:ssl][:cert], lb[:ssl][:intermediate_cert]) unless (lb[:ssl][:key].nil? || lb[:ssl][:cert].nil?)
+          opts = lb[:ssl][:options] || {}
+          @lbs.set_ssl_termination(lb[:name], "443", lb[:ssl][:key], lb[:ssl][:cert], opts) unless (lb[:ssl][:key].nil? || lb[:ssl][:cert].nil?)
         end
       end
     end

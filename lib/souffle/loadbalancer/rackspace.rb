@@ -74,8 +74,8 @@ class Souffle::LoadBalancer::Rackspace < Souffle::LoadBalancer::Base
     end
   end
   
-  def set_ssl_termination(name, port, key, cert, intermediate_cert)
-    @lbs.set_ssl_termincation(get_lb_id(name), port, key, cert, {:intermediate_certificate => intermediate_cert})
+  def set_ssl_termination(name, port, key, cert, opts={})
+    @lbs.set_ssl_termination(get_lb_id(name), port, key, cert, opts)
   end
   
   def create_access_rule(name, address, action)
