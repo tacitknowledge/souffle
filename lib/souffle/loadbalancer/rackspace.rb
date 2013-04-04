@@ -75,6 +75,8 @@ class Souffle::LoadBalancer::Rackspace < Souffle::LoadBalancer::Base
   end
   
   def set_ssl_termination(name, port, key, cert, opts={})
+    initialize if @lbs.nil?
+    wait_for_lb(name)
     @lbs.set_ssl_termination(get_lb_id(name), port, key, cert, opts)
   end
   
