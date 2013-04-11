@@ -393,6 +393,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
   def provision_chef_client(node)
     Souffle::Log.info "#{node.log_prefix} Starting Chef Provisioning..."
     validation_pem = node.try_opt(:validation_pem)
+    chef_version = node.try_opt(:chef_version) || "10.14.4"
     client_config = "log_level\t:info
     log_location\tSTDOUT
     chef_server_url\t'#{node.try_opt(:chef_server)}'
@@ -407,7 +408,7 @@ class Souffle::Provider::Rackspace < Souffle::Provider::Base
       ssh.exec!("mkdir /etc/chef")
       ssh.exec!("echo \"#{client_config}\" >> /etc/chef/client.rb")
       ssh.exec!("echo \"#{validation_pem}\" >> /etc/chef/validation.pem")
-      ssh.exec!("curl -L https://www.opscode.com/chef/install.sh | bash -s -- -v 10.14.4")
+      ssh.exec!("curl -L https://www.opscode.com/chef/install.sh | bash -s -- -v #{chef_version}")
       ssh.exec!("yum clean all")
       ssh.exec!("yum install ruby -y")
       stdout = ssh.exec!("#{client_cmds} ; echo $?")
