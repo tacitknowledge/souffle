@@ -20,6 +20,7 @@ class Souffle::LoadBalancer::Rackspace < Souffle::LoadBalancer::Base
     initialize if @lbs.nil?
     lb_nodes = []
     nodes.each do |n|
+      @node = n if @node.nil?
       node = n.provisioner.provider.get_server(n)
       address = node.addresses["private"].first["addr"]
       Souffle::Log.info "#{n.log_prefix} #{lb[:name]} Address: #{address}"
@@ -61,7 +62,12 @@ class Souffle::LoadBalancer::Rackspace < Souffle::LoadBalancer::Base
   
   def wait_for_lb(name)
     lb = get_lb(name)
-    until(lb.first.state == "ACTIVE")
+    until(lb.first.state == "ACTIVE" || lb.first.state == "ERROR")
+      if lb.first.state == "ERROR"
+        Souffle::Log.error "[#{@node.log_prefix}] System Creation Failure."
+        Souffle::Log.error "[#{@node.log_prefix}] Complete failure. Halting Creation."
+        @node.system.provisioner.creation_halted
+      end
       sleep 5
       lb = get_lb(name)
     end
