@@ -19,6 +19,18 @@ aws_instance_type "c1.medium"
 key_name "josh"
 ```
 
+```ruby
+rackspace_access_key "KEY"
+rackspace_access_name "NAME"
+rackspace_endpoint "https://ord.servers.api.rackspacecloud.com/v2"
+rackspace_image_id "c195ef3b-9195-4474-b6f7-16e5bd86acd0"
+rackspace_flavor_id 5
+validation_pem "PRIVATE KEY"
+dns_provider "rackspace"
+load_balancer_provider "rackspace",
+rackspace_lb_endpoint "https://ord.loadbalancers.api.rackspacecloud.com/v1.0"
+```
+
 ## CLI
 
 The `souffle` command line client can either be run standalone (with a single json provision) or as a webserver.
@@ -54,7 +66,26 @@ As an example system we'll generate two nodes that both are provisioned with `so
     "domain": "mydomain.com",
     "type": "solo",
     "aws_ebs_size": 10,
-    "volume_count": 2
+    "volume_count": 2,
+	"load_balancers" : {
+      "name" : "int-123-serviceslb",
+      "role" : "role[web-services]",
+      "vips" : [ { "type" : "SERVICENET" } ],
+      "access_rules" : [],
+      "lb_port" : 8080,
+      "node_port" : 8080,
+      "attrs_erb" : {
+        "hostsfile" : {
+          "statics" : [ {
+            "ip_address" : "<%= node_ip %>",
+            "host_name" : "<%= node_name %>"
+          }, {
+            "ip_address" : "<%= lb_ip %>",
+            "host_name" : "services.local"
+          }
+        ]
+      }
+    }
   },
   "nodes": [
     {
