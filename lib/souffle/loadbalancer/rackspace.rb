@@ -18,7 +18,7 @@ class Souffle::LoadBalancer::Rackspace < Souffle::LoadBalancer::Base
   
   def create_lb(lb, nodes, vips)
     initialize if @lbs.nil?
-    if get_lb(lb[:name] == [])
+    if get_lb(lb[:name]) == []
       lb_nodes = []
       nodes.each do |n|
         @node = n if @node.nil?
